@@ -8,6 +8,7 @@ deploy:
     - export TF_VAR_password=$(echo "$PVEPASSWORD" | base64 -d)
   script:
     - terraform init
+    - terraform refresh
     - terraform apply --auto-approve=true
   only:
     - main
