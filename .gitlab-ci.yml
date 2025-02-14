@@ -1,5 +1,4 @@
 stages:
-  - validate
   - approval
   - apply
 
@@ -14,12 +13,6 @@ workflow:
     name: registry.gitlab.com/gitlab-org/terraform-images/stable:latest
   variables:
     TF_ADDRESS: http://git.home/projects/5/terraform/state/k8s
-
-tf-fmt:
-  stage: validate
-  extends: .base-terraform
-  script:
-    - terraform fmt -check -recursive
 
 approve/deploy:
   stage: approval
