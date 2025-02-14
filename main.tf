@@ -7,6 +7,11 @@ terraform {
   }
 }
 
+terraform {
+  backend "http" {
+  }
+}
+
 provider "proxmox" {
   endpoint = "https://proxmox1.home:8006/"
   username = var.username
