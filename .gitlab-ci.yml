@@ -6,9 +6,22 @@ deploy:
   before_script:
     - export TF_VAR_username=$(echo "$PVEUSER" | base64 -d)
     - export TF_VAR_password=$(echo "$PVEPASSWORD" | base64 -d)
-    - echo $TF_VAR_username
   script:
     - terraform init
     - terraform apply --auto-approve=true
   only:
     - main
+
+destroy:
+  stage: destroy
+  image: 
+    name: hashicorp/terrafomr:latest
+    entrypoint: [""]
+  before_script:
+    - export TF_VAR_username=$(echo "$PVEUSER" | base64 -d)
+    - export TF_VAR_password=$(echo "$PVEPASSWORD" | base64 -d)
+  script:
+    - terraform refresh
+    - terraform destroy --auto-approve=true
+  only:
+    destroy
