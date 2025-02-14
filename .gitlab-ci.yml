@@ -1,5 +1,5 @@
 deploy:
-  stage: deploy
+  stage: apply
   image: 
     name: hashicorp/terraform:latest
     entrypoint: [""]
@@ -13,7 +13,7 @@ deploy:
     - main
 
 destroy:
-  stage: deploy
+  stage: destroy
   image: 
     name: hashicorp/terrafomr:latest
     entrypoint: [""]
@@ -23,5 +23,4 @@ destroy:
   script:
     - terraform refresh
     - terraform destroy --auto-approve=true
-  only:
-    destroy
+  when: manual
