@@ -1,27 +1,72 @@
-deploy:
-  stage: deploy
-  image: 
-    name: hashicorp/terraform:latest
-    entrypoint: [""]
-  before_script:
-    - export TF_VAR_username=$(echo "$PVEUSER" | base64 -d)
-    - export TF_VAR_password=$(echo "$PVEPASSWORD" | base64 -d)
-  script:
-    - terraform init
-    - terraform refresh
-    - terraform apply --auto-approve=true
-  only:
-    - main
+---
+# Pipeline will only trigger when something is pushed to main branch 
+workflow:  
+    rules:
+      - if: $CI_COMMIT_BRANCH != "main" && $CI_PIPELINE_SOURCE != "merge_request_event"
+        when: never
+      - when: always
 
-destroy:
-  stage: .post
-  image: 
-    name: hashicorp/terrafomr:latest
-    entrypoint: [""]
-  before_script:
-    - export TF_VAR_username=$(echo "$PVEUSER" | base64 -d)
-    - export TF_VAR_password=$(echo "$PVEPASSWORD" | base64 -d)
+# List of variables
+variables:
+  TF_DIR: ${CI_PROJECT_DIR}       # Directory in which terraform files are kept
+  STATE_NAME: "tf_state"          # Name of terraform state used in "terraform init"command
+  ADDRESS: "https://gitlab.com/api/v4/projects/${CI_PROJECT_ID}/terraform/state/${STATE_NAME}"
+  GITLAB_ACCESS_TOKEN: $(echo "$GITLABACCESSTOKEN" | base64 -d)
+  GITLAB_USER_NAME: $(echo "$GITLABUSERNAME" | base64 -d)
+
+# Stages of the pipeline
+stages:
+  - validate
+  - plan
+  - apply
+  - destroy
+
+# Image which will use in each stage
+image:
+  name: hashicorp/terraform:light
+  entrypoint: [""]
+
+# Script to be executed before each stage 
+before_script:
+  - terraform --version
+  - export GITLAB_ACCESS_TOKEN=$TOKEN
+  - cd ${TF_DIR}            # To get inside the working directory
+  - terraform init  -reconfigure  
+  - backend-config="address=${ADDRESS}" 
+  - backend-config="lock_address=${ADDRESS}/lock" -backend-config="unlock_address=${ADDRESS}/lock" -backend-config="username=${GITLAB_USER_NAME}" -backend-config="password=${GITLAB_ACCESS_TOKEN}" 
+  - backend-config="lock_method=POST" 
+  - backend-config="unlock_method=DELETE" 
+  - backend-config="retry_wait_min=5"    
+  # To initiate terraform backend / gitlab managed terraform state
+  
+# To validate terraform files configuration
+validate:
+  stage: validate
   script:
-    - terraform refresh
-    - terraform destroy --auto-approve=true
+    - terraform validate
+
+# To check the plan of the infrastructure
+plan:
+  stage: plan
+  script:
+    - terraform plan 
+  dependencies:              
+    - validate
+
+# To create infrastructure on AWS
+apply:
+  stage: apply
+  script:
+    - terraform apply  -auto-approve
+  dependencies:              
+    - plan
+
+# To destroy infrastructure on cloud. It needs manual approval 
+destroy:
+  stage: destroy
+  script:
+    - terraform destroy  -auto-approve
+  dependencies:          
+    - plan
+    - apply
   when: manual

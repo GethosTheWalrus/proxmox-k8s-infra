@@ -5,11 +5,7 @@ terraform {
       version = "0.71.0"
     }
   }
-}
-
-terraform {
-  backend "http" {
-  }
+  backend "http" {}
 }
 
 provider "proxmox" {
