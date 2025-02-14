@@ -1,6 +1,8 @@
 deploy:
   stage: build
-  image: hashicorp/terraform:latest
+  image: 
+    name: hashicorp/terraform:latest
+    entrypoint: [""]
   before_script:
     - export TF_VAR_username=$(echo "$PVEUSER" | base64 --decode)
     - export TF_VAR_password=$(echo "$PVEPASSWORD" | base64 --decode)
