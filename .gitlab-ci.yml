@@ -1,70 +1,37 @@
----
-# Pipeline will only trigger when something is pushed to main branch 
-workflow:  
-    rules:
-      - if: $CI_COMMIT_BRANCH != "main" && $CI_PIPELINE_SOURCE != "merge_request_event"
-        when: never
-      - when: always
+# To contribute improvements to CI/CD templates, please follow the Development guide at:
+# https://docs.gitlab.com/ee/development/cicd/templates.html
+# This specific template is located at:
+# https://gitlab.com/gitlab-org/gitlab/-/blob/master/lib/gitlab/ci/templates/Terraform.gitlab-ci.yml
 
-# List of variables
-variables:
-  STATE_NAME: "tf_state"
-  TF_ADDRESS: "http://git.home/api/v4/projects/5/terraform/state/${STATE_NAME}"
-  TF_PASSWORD: $(echo "$GITLABACCESSTOKEN" | base64 -d)
-  TF_USERNAME: $(echo "$GITLABUSERNAME" | base64 -d)
+include:
+  - template: Terraform/Base.gitlab-ci.yml  # https://gitlab.com/gitlab-org/gitlab/blob/master/lib/gitlab/ci/templates/Terraform/Base.gitlab-ci.yml
+  - template: Jobs/SAST-IaC.gitlab-ci.yml   # https://gitlab.com/gitlab-org/gitlab/blob/master/lib/gitlab/ci/templates/Jobs/SAST-IaC.gitlab-ci.yml
 
-# Stages of the pipeline
 stages:
   - validate
-  - plan
-  - apply
-  - destroy
+  - test
+  - build
+  - deploy
+  - cleanup
 
-# Image which will use in each stage
-image:
-  name: ghcr.io/opentofu/opentofu:latest
-  entrypoint: [""]
+fmt:
+  extends: .terraform:fmt
+  needs: []
 
-# Script to be executed before each stage 
-before_script:
-  tofu init \
-  -backend-config=address=${TF_ADDRESS} \
-  -backend-config=lock_address=${TF_ADDRESS}/lock \
-  -backend-config=unlock_address=${TF_ADDRESS}/lock \
-  -backend-config=username=${TF_USERNAME} \
-  -backend-config=password=${TF_PASSWORD} \
-  -backend-config=lock_method=POST \
-  -backend-config=unlock_method=DELETE \
-  -backend-config=retry_wait_min=5
-  
-# To validate terraform files configuration
 validate:
-  stage: validate
-  script:
-    - terraform validate
+  extends: .terraform:validate
+  needs: []
 
-# To check the plan of the infrastructure
-plan:
-  stage: plan
-  script:
-    - terraform plan 
-  dependencies:              
-    - validate
+build:
+  extends: .terraform:build
+  environment:
+    name: $TF_STATE_NAME
+    action: prepare
 
-# To create infrastructure on AWS
-apply:
-  stage: apply
-  script:
-    - terraform apply  -auto-approve
-  dependencies:              
-    - plan
-
-# To destroy infrastructure on cloud. It needs manual approval 
-destroy:
-  stage: destroy
-  script:
-    - terraform destroy  -auto-approve
-  dependencies:          
-    - plan
-    - apply
-  when: manual
+deploy:
+  extends: .terraform:deploy
+  dependencies:
+    - build
+  environment:
+    name: $TF_STATE_NAME
+    action: start
