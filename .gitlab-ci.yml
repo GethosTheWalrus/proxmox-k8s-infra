@@ -1,5 +1,5 @@
 deploy:
-  stage: build
+  stage: deploy
   image: 
     name: hashicorp/terraform:latest
     entrypoint: [""]
@@ -13,7 +13,7 @@ deploy:
     - main
 
 destroy:
-  stage: destroy
+  stage: deploy
   image: 
     name: hashicorp/terrafomr:latest
     entrypoint: [""]
