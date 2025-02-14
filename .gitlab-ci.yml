@@ -1,26 +1,39 @@
-# Using version `0.10.0`:
-include:
-  - component: $CI_SERVER_FQDN/components/opentofu/full-pipeline@0.10.0
-    inputs:
-      # The version must currently be specified explicitly as an input,
-      # to find the correctly associated images. # This can be removed
-      # once https://gitlab.com/gitlab-org/gitlab/-/issues/438275 is solved.
-      version: 0.10.0 # component version
-      opentofu_version: 1.6.1
+stages:
+  - validate
+  - approval
+  - apply
 
-stages: [validate, test, build, deploy, cleanup]
+workflow:
+  rules:
+    - if: $CI_COMMIT_BRANCH
+      changes:
+        - state/*
 
----
+.base-terraform:
+  image:
+    name: registry.gitlab.com/gitlab-org/terraform-images/stable:latest
+  variables:
+    TF_ADDRESS: http://git.home/projects/5/terraform/state/k8s
 
-# ... in case you absolutely know what you are doing and are
-# aware that this may introduce breaking changes, you may use the latest release:
-include:
-  - component: $CI_SERVER_FQDN/components/opentofu/full-pipeline@~latest
-    inputs:
-      # The version must currently be specified explicitly as an input,
-      # to find the correctly associated images. # This can be removed
-      # once https://gitlab.com/gitlab-org/gitlab/-/issues/438275 is solved.
-      version: latest # component version
-      opentofu_version: 1.6.1
+tf-fmt:
+  stage: validate
+  extends: .base-terraform
+  script:
+    - terraform fmt -check -recursive
 
-stages: [validate, test, build, deploy, cleanup]
+approve/deploy:
+  stage: approval
+  script:
+    - echo "Applying plan!"
+  rules:
+    - if: $CI_COMMIT_BRANCH
+      when: manual
+
+apply:
+  stage: apply
+  extends: .base-terraform
+  script:
+    - gitlab-terraform apply
+  dependencies:
+    - approve/deploy
+  allow_failure: false
