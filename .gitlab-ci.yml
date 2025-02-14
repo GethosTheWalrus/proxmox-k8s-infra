@@ -1,37 +1,26 @@
-# To contribute improvements to CI/CD templates, please follow the Development guide at:
-# https://docs.gitlab.com/ee/development/cicd/templates.html
-# This specific template is located at:
-# https://gitlab.com/gitlab-org/gitlab/-/blob/master/lib/gitlab/ci/templates/Terraform.gitlab-ci.yml
-
+# Using version `0.10.0`:
 include:
-  - template: Terraform/Base.gitlab-ci.yml  # https://gitlab.com/gitlab-org/gitlab/blob/master/lib/gitlab/ci/templates/Terraform/Base.gitlab-ci.yml
-  - template: Jobs/SAST-IaC.gitlab-ci.yml   # https://gitlab.com/gitlab-org/gitlab/blob/master/lib/gitlab/ci/templates/Jobs/SAST-IaC.gitlab-ci.yml
+  - component: $CI_SERVER_FQDN/components/opentofu/full-pipeline@0.10.0
+    inputs:
+      # The version must currently be specified explicitly as an input,
+      # to find the correctly associated images. # This can be removed
+      # once https://gitlab.com/gitlab-org/gitlab/-/issues/438275 is solved.
+      version: 0.10.0 # component version
+      opentofu_version: 1.6.1
 
-stages:
-  - validate
-  - test
-  - build
-  - deploy
-  - cleanup
+stages: [validate, test, build, deploy, cleanup]
 
-fmt:
-  extends: .terraform:fmt
-  needs: []
+---
 
-validate:
-  extends: .terraform:validate
-  needs: []
+# ... in case you absolutely know what you are doing and are
+# aware that this may introduce breaking changes, you may use the latest release:
+include:
+  - component: $CI_SERVER_FQDN/components/opentofu/full-pipeline@~latest
+    inputs:
+      # The version must currently be specified explicitly as an input,
+      # to find the correctly associated images. # This can be removed
+      # once https://gitlab.com/gitlab-org/gitlab/-/issues/438275 is solved.
+      version: latest # component version
+      opentofu_version: 1.6.1
 
-build:
-  extends: .terraform:build
-  environment:
-    name: $TF_STATE_NAME
-    action: prepare
-
-deploy:
-  extends: .terraform:deploy
-  dependencies:
-    - build
-  environment:
-    name: $TF_STATE_NAME
-    action: start
+stages: [validate, test, build, deploy, cleanup]
