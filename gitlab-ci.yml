@@ -1,0 +1,13 @@
+deploy:
+  stage: build
+  image: ubuntu:latest
+  before_script:
+    - apt update
+    - apt install -y terraform
+    - export TF_VAR_username=$(echo "$PVEUSER" | base64 --decode)
+    - export TF_VAR_password=$(echo "$PVEPASSWORD" | base64 --decode)
+  script:
+    - terraform init
+    - terraform apply --auto-approve=true
+  only:
+    - main
