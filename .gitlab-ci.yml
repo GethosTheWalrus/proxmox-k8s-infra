@@ -27,7 +27,7 @@ image:
 
 # Script to be executed before each stage 
 before_script:
-  tofu init \
+  terraform init \
   -backend-config=address=${TF_ADDRESS} \
   -backend-config=lock_address=${TF_ADDRESS}/lock \
   -backend-config=unlock_address=${TF_ADDRESS}/lock \
