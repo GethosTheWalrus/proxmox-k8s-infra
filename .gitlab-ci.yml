@@ -8,11 +8,10 @@ workflow:
 
 # List of variables
 variables:
-  TF_DIR: ${CI_PROJECT_DIR}       # Directory in which terraform files are kept
-  STATE_NAME: "tf_state"          # Name of terraform state used in "terraform init"command
-  ADDRESS: "https://gitlab.com/api/v4/projects/${CI_PROJECT_ID}/terraform/state/${STATE_NAME}"
-  GITLAB_ACCESS_TOKEN: $(echo "$GITLABACCESSTOKEN" | base64 -d)
-  GITLAB_USER_NAME: $(echo "$GITLABUSERNAME" | base64 -d)
+  STATE_NAME: "tf_state"
+  TF_ADDRESS: "http://git.home/api/v4/projects/5/terraform/state/${STATE_NAME}"
+  TF_PASSWORD: $(echo "$GITLABACCESSTOKEN" | base64 -d)
+  TF_USERNAME: $(echo "$GITLABUSERNAME" | base64 -d)
 
 # Stages of the pipeline
 stages:
@@ -28,16 +27,15 @@ image:
 
 # Script to be executed before each stage 
 before_script:
-  - terraform --version
-  - export GITLAB_ACCESS_TOKEN=$TOKEN
-  - cd ${TF_DIR}            # To get inside the working directory
-  - terraform init  -reconfigure  
-  - backend-config="address=${ADDRESS}" 
-  - backend-config="lock_address=${ADDRESS}/lock" -backend-config="unlock_address=${ADDRESS}/lock" -backend-config="username=${GITLAB_USER_NAME}" -backend-config="password=${GITLAB_ACCESS_TOKEN}" 
-  - backend-config="lock_method=POST" 
-  - backend-config="unlock_method=DELETE" 
-  - backend-config="retry_wait_min=5"    
-  # To initiate terraform backend / gitlab managed terraform state
+  tofu init \
+  -backend-config=address=${TF_ADDRESS} \
+  -backend-config=lock_address=${TF_ADDRESS}/lock \
+  -backend-config=unlock_address=${TF_ADDRESS}/lock \
+  -backend-config=username=${TF_USERNAME} \
+  -backend-config=password=${TF_PASSWORD} \
+  -backend-config=lock_method=POST \
+  -backend-config=unlock_method=DELETE \
+  -backend-config=retry_wait_min=5
   
 # To validate terraform files configuration
 validate:
