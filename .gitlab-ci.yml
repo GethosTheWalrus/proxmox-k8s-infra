@@ -22,12 +22,12 @@ stages:
 
 # Image which will use in each stage
 image:
-  name: hashicorp/terraform:light
+  name: ghcr.io/opentofu/opentofu:latest
   entrypoint: [""]
 
 # Script to be executed before each stage 
 before_script:
-  terraform init \
+  tofu init \
   -backend-config=address=${TF_ADDRESS} \
   -backend-config=lock_address=${TF_ADDRESS}/lock \
   -backend-config=unlock_address=${TF_ADDRESS}/lock \
