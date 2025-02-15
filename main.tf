@@ -19,12 +19,3 @@ provider "proxmox" {
     username = "root"
   }
 }
-
-# data "terraform_remote_state" "gitlab" {
-#   backend = "http"
-#   config = {
-#     address = "http://localstack.home:4566/proxmox-k8s-terraform"
-#     skip_cert_verification = true
-#     insecure = true
-#   }
-# }
