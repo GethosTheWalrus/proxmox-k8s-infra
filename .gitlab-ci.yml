@@ -19,7 +19,7 @@ deploy:
 destroy:
   stage: .post
   image: 
-    name: hashicorp/terrafomr:latest
+    name: hashicorp/terraform:latest
     entrypoint: [""]
   before_script:
     - export TF_VAR_username=$(echo "$PVEUSER" | base64 -d)
