@@ -1,4 +1,4 @@
-resource "proxmox_virtual_environment_vm" "ubuntu_vm" {
+resource "proxmox_virtual_environment_vm" "k8s1" {
   name            = "k8s1"
   node_name       = var.pve_node
   stop_on_destroy = true
@@ -28,7 +28,7 @@ resource "proxmox_virtual_environment_vm" "ubuntu_vm" {
   }
 }
 
-resource "proxmox_virtual_environment_vm" "ubuntu_vm" {
+resource "proxmox_virtual_environment_vm" "k8s2" {
   name            = "k8s2"
   node_name       = var.pve_node
   stop_on_destroy = true
@@ -58,7 +58,7 @@ resource "proxmox_virtual_environment_vm" "ubuntu_vm" {
   }
 }
 
-resource "proxmox_virtual_environment_vm" "ubuntu_vm" {
+resource "proxmox_virtual_environment_vm" "k8s3" {
   name            = "k8s3"
   node_name       = var.pve_node
   stop_on_destroy = true
