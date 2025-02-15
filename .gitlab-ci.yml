@@ -10,8 +10,8 @@ deploy:
     - export TF_USERNAME=$(echo "$GITLABUSERNAME" | base64 -d)
     - export TF_PASSWORD=$(echo "$GITLABACCESSTOKEN" | base64 -d)
     - export TF_ADDRESS="http://git.home/api/v4/projects/5/terraform/state/proxmox-k8s-infra"
-  script:
     - terraform init -backend-config=address=${TF_ADDRESS} -backend-config=lock_address=${TF_ADDRESS}/lock -backend-config=unlock_address=${TF_ADDRESS}/lock -backend-config=username=${TF_USERNAME} -backend-config=password=${TF_PASSWORD} -backend-config=lock_method=POST -backend-config=unlock_method=DELETE -backend-config=retry_wait_min=5
+  script:
     - terraform apply --auto-approve=true
   only:
     - main
@@ -24,6 +24,7 @@ destroy:
   before_script:
     - export TF_VAR_username=$(echo "$PVEUSER" | base64 -d)
     - export TF_VAR_password=$(echo "$PVEPASSWORD" | base64 -d)
+    - terraform init -backend-config=address=${TF_ADDRESS} -backend-config=lock_address=${TF_ADDRESS}/lock -backend-config=unlock_address=${TF_ADDRESS}/lock -backend-config=username=${TF_USERNAME} -backend-config=password=${TF_PASSWORD} -backend-config=lock_method=POST -backend-config=unlock_method=DELETE -backend-config=retry_wait_min=5
   script:
     - terraform destroy --auto-approve=true
   when: manual
