@@ -1,32 +1,29 @@
-stages:
-  - approval
-  - apply
-
-workflow:
-  rules:
-    - if: $CI_COMMIT_BRANCH
-      changes:
-        - state/*
-
-.base-terraform:
-  image:
-    name: registry.gitlab.com/gitlab-org/terraform-images/stable:latest
-  variables:
-    TF_ADDRESS: http://git.home/projects/5/terraform/state/k8s
-
-approve/deploy:
-  stage: approval
+deploy:
+  stage: deploy
+  image: 
+    name: hashicorp/terraform:latest
+    entrypoint: [""]
+  before_script:
+    - export TF_VAR_username=$(echo "$PVEUSER" | base64 -d)
+    - export TF_VAR_password=$(echo "$PVEPASSWORD" | base64 -d)
+    - export PROJECT_ID=5
+    - export TF_USERNAME=$(echo "$GITLABUSERNAME" | base64 -d)
+    - export TF_PASSWORD=$(echo "$GITLABACCESSTOKEN" | base64 -d)
+    - export TF_ADDRESS="http://gitlab.com/api/v4/projects/5/terraform/state/tf_state"
   script:
-    - echo "Applying plan!"
-  rules:
-    - if: $CI_COMMIT_BRANCH
-      when: manual
+    - terraform init
+    - terraform apply --auto-approve=true
+  only:
+    - main
 
-apply:
-  stage: apply
-  extends: .base-terraform
+destroy:
+  stage: .post
+  image: 
+    name: hashicorp/terrafomr:latest
+    entrypoint: [""]
+  before_script:
+    - export TF_VAR_username=$(echo "$PVEUSER" | base64 -d)
+    - export TF_VAR_password=$(echo "$PVEPASSWORD" | base64 -d)
   script:
-    - gitlab-terraform apply
-  dependencies:
-    - approve/deploy
-  allow_failure: false
+    - terraform destroy --auto-approve=true
+  when: manual
