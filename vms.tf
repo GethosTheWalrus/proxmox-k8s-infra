@@ -7,6 +7,12 @@ resource "proxmox_virtual_environment_vm" "k8s1" {
       username    = var.os_user
       password    = var.os_password
     }
+    ip_config {
+      ipv4 {
+        address = "192.168.69.80/24"
+        gateway = "192.168.69.1"
+      }
+    }
   }
 
   cpu {
@@ -37,6 +43,12 @@ resource "proxmox_virtual_environment_vm" "k8s2" {
       username    = var.os_user
       password    = var.os_password
     }
+    ip_config {
+      ipv4 {
+        address = "192.168.69.81/24"
+        gateway = "192.168.69.1"
+      }
+    }
   }
 
   cpu {
@@ -66,6 +78,12 @@ resource "proxmox_virtual_environment_vm" "k8s3" {
     user_account {
       username    = var.os_user
       password    = var.os_password
+    }
+    ip_config {
+      ipv4 {
+        address = "192.168.69.82/24"
+        gateway = "192.168.69.1"
+      }
     }
   }
 
