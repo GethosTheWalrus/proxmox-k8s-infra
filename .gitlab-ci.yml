@@ -20,7 +20,7 @@ deploy:
     - terraform apply --auto-approve=true
     - terraform output vm_private_key > key
     - terraform output vm_public_key > key.pub
-    - sed '1d;$d' key
+    - sed -i '1d;$d' key
   only:
     - main
   artifacts:
