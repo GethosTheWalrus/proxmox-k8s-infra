@@ -44,7 +44,6 @@ install:
     - apt update && apt install -y sshpass
   script:
     - scp -v -q -o StrictHostKeyChecking=no -i key -o "RequestTTY no" -r scripts/* root@"$K8S1":/home/k8s/
-    # - cat key
   when: manual
 
 destroy:
