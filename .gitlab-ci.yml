@@ -1,5 +1,6 @@
 stages:
   - deploy
+  - install
   - destroy
 
 deploy:
@@ -19,6 +20,22 @@ deploy:
     - terraform apply --auto-approve=true
   only:
     - main
+  artifacts:
+    paths:
+      - scripts
+
+
+install:
+  stage: install
+  image:
+  name: registry.gitlab.com/torese/docker-ansible
+  variables:
+    K8S1: 192.168.69.80
+    K8S2: 192.168.69.81
+    K8S3: 192.168.69.82
+    HOST_PASSWORD: s8k
+  script:
+    - sshpass -v -p "$HOST_PASSWORD" scp -v -o StrictHostKeyChecking=no -r scripts/* root@"$K8S1":/home/k8s/
 
 destroy:
   stage: destroy

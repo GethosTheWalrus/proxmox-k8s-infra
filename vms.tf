@@ -15,6 +15,10 @@ resource "proxmox_virtual_environment_vm" "k8s1" {
     }
   }
 
+  network_device {
+    model = "vmxnet3"
+  }
+
   cpu {
     cores = var.cpu_cores
     type  = var.cpu_type
@@ -35,6 +39,7 @@ resource "proxmox_virtual_environment_vm" "k8s1" {
 }
 
 resource "proxmox_virtual_environment_vm" "k8s2" {
+  depends_on      = [proxmox_virtual_environment_vm.k8s1]
   name            = "k8s2"
   node_name       = var.pve_node
   stop_on_destroy = true
@@ -49,6 +54,10 @@ resource "proxmox_virtual_environment_vm" "k8s2" {
         gateway = "192.168.69.1"
       }
     }
+  }
+
+  network_device {
+    model = "vmxnet3"
   }
 
   cpu {
@@ -71,6 +80,7 @@ resource "proxmox_virtual_environment_vm" "k8s2" {
 }
 
 resource "proxmox_virtual_environment_vm" "k8s3" {
+  depends_on      = [proxmox_virtual_environment_vm.k8s1]
   name            = "k8s3"
   node_name       = var.pve_node
   stop_on_destroy = true
@@ -85,6 +95,10 @@ resource "proxmox_virtual_environment_vm" "k8s3" {
         gateway = "192.168.69.1"
       }
     }
+  }
+
+  network_device {
+    model = "vmxnet3"
   }
 
   cpu {
