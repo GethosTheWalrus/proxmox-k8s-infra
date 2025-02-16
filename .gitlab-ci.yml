@@ -43,7 +43,7 @@ install:
   before_script:
     - apt update && apt install -y openssh-client
   script:
-    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" 'bash -s' < scripts/installk8s.sh
+    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" 'sudo bash -s' < scripts/installk8s.sh
   when: manual
 
 destroy:
