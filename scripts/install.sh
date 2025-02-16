@@ -26,9 +26,3 @@ sudo apt-get update
 sudo apt-get install -y kubelet kubeadm kubectl
 sudo apt-mark hold kubelet kubeadm kubectl
 sudo systemctl enable --now kubelet
-
-# Mark packages to hold at their current version
-sudo apt-mark hold kubelet kubeadm kubectl
-
-# Install Calico networking for the Kubernetes cluster
-kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
