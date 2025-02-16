@@ -37,12 +37,13 @@ install:
     K8S1: 192.168.69.80
     K8S2: 192.168.69.81
     K8S3: 192.168.69.82
-    HOST_PASSWORD: s8k
   before_script:
     # Install sshpass if not already installed
     - apt update && apt install -y sshpass
   script:
-    - ssh -v -o -i key scp -v -o - StrictHostKeyChecking=no -r scripts/* root@"$K8S1":/home/k8s/
+    # - ssh -v -o -i key scp -v -o - StrictHostKeyChecking=no -r scripts/* root@"$K8S1":/home/k8s/
+    - cat $key
+    - cat key
   when: manual
 
 destroy:
