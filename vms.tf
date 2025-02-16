@@ -4,6 +4,7 @@ resource "proxmox_virtual_environment_vm" "k8s1" {
   stop_on_destroy = true
   initialization {
     user_account {
+      keys        = [trimspace(tls_private_key.vm_key.public_key_openssh)]
       username    = var.os_user
       password    = var.os_password
     }
@@ -120,9 +121,24 @@ resource "proxmox_virtual_environment_vm" "k8s3" {
   }
 }
 
+
+resource "tls_private_key" "vm_key" {
+  algorithm = "RSA"
+  rsa_bits  = 2048
+}
+
 resource "proxmox_virtual_environment_download_file" "ubuntu_cloud_image" {
   content_type   = "iso"
   datastore_id   = var.os_image_datastore_id
   node_name      = var.pve_node
   url            = var.os_image
+}
+
+output "vm_private_key" {
+  value     = tls_private_key.vm_key.private_key_pem
+  sensitive = true
+}
+
+output "vm_public_key" {
+  value = tls_private_key.vm_key.public_key_openssh
 }

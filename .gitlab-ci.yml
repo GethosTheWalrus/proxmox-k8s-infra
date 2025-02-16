@@ -18,6 +18,8 @@ deploy:
     - terraform init -backend-config=address=${TF_ADDRESS} -backend-config=lock_address=${TF_ADDRESS}/lock -backend-config=unlock_address=${TF_ADDRESS}/lock -backend-config=username=${TF_USERNAME} -backend-config=password=${TF_PASSWORD} -backend-config=lock_method=POST -backend-config=unlock_method=DELETE -backend-config=retry_wait_min=5
   script:
     - terraform apply --auto-approve=true
+    - terraform output vm_private_key > key
+    - terraform output vm_public_key > key.pub
   only:
     - main
   artifacts:
@@ -36,7 +38,7 @@ install:
     HOST_PASSWORD: s8k
   before_script:
     # Install sshpass if not already installed
-    - apt update && apt install -y sshpass
+    - apt update && apt install -y sshpassS
   script:
     - sshpass -v -p "$HOST_PASSWORD" scp -v -o StrictHostKeyChecking=no -r scripts/* root@"$K8S1":/home/k8s/
   when: manual
