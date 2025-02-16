@@ -28,7 +28,7 @@ deploy:
 install:
   stage: install
   image:
-    name: registry.gitlab.com/torese/docker-ansible:latest
+    name: ubuntu:latest
   variables:
     K8S1: 192.168.69.80
     K8S2: 192.168.69.81
@@ -36,7 +36,7 @@ install:
     HOST_PASSWORD: s8k
   before_script:
     # Install sshpass if not already installed
-    - apt-get update && apt-get install -y sshpass
+    - apt update && apt install -y sshpass
   script:
     - sshpass -v -p "$HOST_PASSWORD" scp -v -o StrictHostKeyChecking=no -r scripts/* root@"$K8S1":/home/k8s/
   when: manual
