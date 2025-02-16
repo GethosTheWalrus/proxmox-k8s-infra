@@ -42,7 +42,7 @@ install:
     # Install sshpass if not already installed
     - apt update && apt install -y sshpass
   script:
-    - sshpass -v -i key scp -v -o StrictHostKeyChecking=no -r scripts/* root@"$K8S1":/home/k8s/
+    - ssh -v -o -i key scp -v -o - StrictHostKeyChecking=no -r scripts/* root@"$K8S1":/home/k8s/
   when: manual
 
 destroy:
