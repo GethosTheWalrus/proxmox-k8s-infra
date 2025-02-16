@@ -25,6 +25,8 @@ deploy:
   artifacts:
     paths:
       - scripts
+      - key
+      - key.pub
 
 
 install:
@@ -40,7 +42,7 @@ install:
     # Install sshpass if not already installed
     - apt update && apt install -y sshpassS
   script:
-    - sshpass -v -p "$HOST_PASSWORD" scp -v -o StrictHostKeyChecking=no -r scripts/* root@"$K8S1":/home/k8s/
+    - sshpass -v -i key scp -v -o StrictHostKeyChecking=no -r scripts/* root@"$K8S1":/home/k8s/
   when: manual
 
 destroy:
