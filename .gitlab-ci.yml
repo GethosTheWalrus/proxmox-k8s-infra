@@ -28,7 +28,7 @@ deploy:
 install:
   stage: install
   image:
-    name: registry.gitlab.com/torese/docker-ansible
+    name: registry.gitlab.com/torese/docker-ansible:latest
   variables:
     K8S1: 192.168.69.80
     K8S2: 192.168.69.81
