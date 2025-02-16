@@ -19,7 +19,7 @@ sudo systemctl enable containerd
 
 # Add Kubernetes apt repository
 curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
-echo "deb https://apt.kubernetes.io/ kubernetes-oracular main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.32/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
 
 # Update package index again after adding Kubernetes repo
 sudo apt update
