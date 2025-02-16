@@ -40,6 +40,8 @@ install:
     K8S1: 192.168.69.80
     K8S2: 192.168.69.81
     K8S3: 192.168.69.82
+  before_script:
+    - apt update && apt install -y openssh-client
   script:
     - ssh -i key k8s@"$K8S1" 'bash -s' < scripts/installk8s.sh
   when: manual
