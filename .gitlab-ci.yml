@@ -44,8 +44,8 @@ init-master:
   before_script:
     - apt update && apt install -y openssh-client
   script:
-    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "sudo ROLE=$ROLE TOKEN=$TOKEN bash -s" < scripts/install.sh
-    - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/hash $CI_PROJECT_DIR/hash
+  - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "sudo ROLE=$ROLE TOKEN=$TOKEN bash -s" < scripts/install.sh
+  - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/hash $CI_PROJECT_DIR/hash
   dependencies:
     - deploy
   when: manual
@@ -69,8 +69,9 @@ init-workers:
   before_script:
     - apt update && apt install -y openssh-client
   script:
-    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S2" "sudo ROLE=$ROLE bash -s"' < scripts/install.sh $K8S1 $JOINTOKEN $(cat $CI_PROJECT_DIR/hash)
-    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "sudo ROLE=$ROLE bash -s"' < scripts/install.sh $K8S1 $JOINTOKEN $(cat $CI_PROJECT_DIR/hash)
+    - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/hash $CI_PROJECT_DIR/hash
+    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S2" "sudo ROLE=$ROLE bash -s" < $CI_PROJECT_DIR/scripts/install.sh $K8S1 $JOINTOKEN $(cat $CI_PROJECT_DIR/hash)
+    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S3" "sudo ROLE=$ROLE bash -s" < $CI_PROJECT_DIR/scripts/install.sh $K8S1 $JOINTOKEN $(cat $CI_PROJECT_DIR/hash)
   when: manual
   dependencies:
     - init-master
