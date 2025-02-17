@@ -51,12 +51,12 @@ init-master:
     - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/hash $CI_PROJECT_DIR/hash
   dependencies:
     - deploy
-
-  when: manual  # Make this job manual to control when it's triggered
+  when: manual
   artifacts:
     paths:
-      - hash  # Save the hash file as an artifact
-      - key   # Save the SSH key used for connections
+      - hash
+      - key
+      - scripts
 
 
 init-workers:
@@ -67,13 +67,13 @@ init-workers:
     K8S1: 192.168.69.80
     K8S2: 192.168.69.81
     K8S3: 192.168.69.82
+    JOINTOKEN: abcdef.0123456789abcdef
     ROLE: worker
   before_script:
     - apt update && apt install -y openssh-client
   script:
-    # Install k8s on workers with proper arguments
-    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S2" "sudo ROLE=$ROLE bash -s < scripts/install.sh $K8S1 $JOINTOKEN $(cat $CI_PROJECT_DIR/hash)"
-    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S3" "sudo ROLE=$ROLE bash -s < scripts/install.sh $K8S1 $JOINTOKEN $(cat $CI_PROJECT_DIR/hash)"
+    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S2" 'sudo ROLE=$ROLE TOKEN=$JOINTOKEN && bash -s' < scripts/install.sh $K8S1 $JOINTOKEN $(cat $CI_PROJECT_DIR/hash)
+    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S3" 'export ROLE=$ROLE && sudo bash -s' < scripts/install.sh $K8S1 $JOINTOKEN $(cat $CI_PROJECT_DIR/hash)
   when: manual
   dependencies:
     - init-master
