@@ -6,6 +6,12 @@ if [ -z "$TOKEN" ]; then
   exit 1
 fi
 
+# Enable IP forwarding for Kubernetes
+echo "Enabling IP forwarding for Kubernetes..."
+sudo sysctl net.ipv4.ip_forward=1
+echo "net.ipv4.ip_forward = 1" | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
+
 # Initialize Kubernetes master node with the provided token
 echo "Initializing Kubernetes master node..."
 sudo kubeadm init --pod-network-cidr=10.69.0.0/16 --token $TOKEN
