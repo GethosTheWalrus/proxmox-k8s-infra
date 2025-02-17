@@ -52,6 +52,7 @@ init-master:
   artifacts:
     paths:
       - hash
+      - key
 
 init-workers:
   stage: init-workers
@@ -81,6 +82,7 @@ init-workers:
   artifacts:
     paths:
       - /tmp/artifacts/hash
+      - /tmp/artifacts/key
 
 
 destroy:
