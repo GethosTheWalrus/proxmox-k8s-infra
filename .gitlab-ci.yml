@@ -41,7 +41,7 @@ init-master:
   variables:
     K8S1: 192.168.69.80  # IP address of the master node
     ROLE: master
-    TOKEN: k8s-join-token.abcdef1234567890  # The token used to initialize the master node
+    TOKEN: abcdef.0123456789abcdef  # The token used to initialize the master node
   before_script:
     - apt update && apt install -y openssh-client  # Install SSH client for remote connections
   script:
