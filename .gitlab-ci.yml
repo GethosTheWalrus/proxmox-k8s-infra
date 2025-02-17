@@ -38,16 +38,13 @@ init-master:
   image:
     name: ubuntu:latest
   variables:
-    K8S1: 192.168.69.80  # IP address of the master node
+    K8S1: 192.168.69.80
     ROLE: master
-    TOKEN: abcdef.0123456789abcdef  # The token used to initialize the master node
+    TOKEN: abcdef.0123456789abcdef
   before_script:
-    - apt update && apt install -y openssh-client  # Install SSH client for remote connections
+    - apt update && apt install -y openssh-client client for remote connections
   script:
-    # Install k8s on the master node
     - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "sudo ROLE=$ROLE TOKEN=$TOKEN bash -s" < scripts/install.sh
-
-    # Copy the hash file from master node to CI
     - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/hash $CI_PROJECT_DIR/hash
   dependencies:
     - deploy
@@ -72,8 +69,8 @@ init-workers:
   before_script:
     - apt update && apt install -y openssh-client
   script:
-    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S2" 'sudo -E bash -c "export ROLE=$ROLE && bash -s"' < scripts/install.sh $K8S1 $JOINTOKEN $(cat $CI_PROJECT_DIR/hash)
-    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S3" 'sudo -E bash -c "export ROLE=$ROLE && bash -s"' < scripts/install.sh $K8S1 $JOINTOKEN $(cat $CI_PROJECT_DIR/hash)
+    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S2" "sudo ROLE=$ROLE bash -s"' < scripts/install.sh $K8S1 $JOINTOKEN $(cat $CI_PROJECT_DIR/hash)
+    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "sudo ROLE=$ROLE bash -s"' < scripts/install.sh $K8S1 $JOINTOKEN $(cat $CI_PROJECT_DIR/hash)
   when: manual
   dependencies:
     - init-master
