@@ -49,6 +49,8 @@ init-master:
 
     # Copy the hash file from master node to CI
     - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/hash $CI_PROJECT_DIR/hash
+  deploy:
+    - init-master
 
   when: manual  # Make this job manual to control when it's triggered
   artifacts:
@@ -71,8 +73,8 @@ init-workers:
     - apt update && apt install -y openssh-client
   script:
     # Install k8s on workers
-    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S2" 'export ROLE=$ROLE && sudo bash -s' < scripts/install.sh
-    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S3" 'export ROLE=$ROLE && sudo bash -s' < scripts/install.sh
+    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S2" 'sudo ROLE=$ROLE bash -s' < scripts/install.sh
+    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S3" 'sudo ROLE=$ROLE bash -s' < scripts/install.sh
 
     # Download hash artifact from init-master stage
     - mkdir -p /tmp/artifacts
