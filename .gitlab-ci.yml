@@ -31,7 +31,6 @@ deploy:
     paths:
       - scripts
       - key
-      - key.pub
 
 
 init-master:
