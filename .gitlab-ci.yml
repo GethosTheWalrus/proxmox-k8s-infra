@@ -4,12 +4,9 @@ stages:
   - init-workers
   - destroy
 
-
 deploy:
   stage: deploy
-  image: 
-    name: hashicorp/terraform:latest
-    entrypoint: [""]
+  image: { name: hashicorp/terraform:latest, entrypoint: [""] }
   before_script:
     - export TF_VAR_username=$(echo "$PVEUSER" | base64 -d)
     - export TF_VAR_password=$(echo "$PVEPASSWORD" | base64 -d)
@@ -17,86 +14,73 @@ deploy:
     - export TF_USERNAME=$(echo "$GITLABUSERNAME" | base64 -d)
     - export TF_PASSWORD=$(echo "$GITLABACCESSTOKEN" | base64 -d)
     - export TF_ADDRESS="http://git.home/api/v4/projects/5/terraform/state/proxmox-k8s-infra"
-    - terraform init -backend-config=address=${TF_ADDRESS} -backend-config=lock_address=${TF_ADDRESS}/lock -backend-config=unlock_address=${TF_ADDRESS}/lock -backend-config=username=${TF_USERNAME} -backend-config=password=${TF_PASSWORD} -backend-config=lock_method=POST -backend-config=unlock_method=DELETE -backend-config=retry_wait_min=5
+    - terraform init -backend-config=address=${TF_ADDRESS} \
+      -backend-config=lock_address=${TF_ADDRESS}/lock \
+      -backend-config=unlock_address=${TF_ADDRESS}/lock \
+      -backend-config=username=${TF_USERNAME} \
+      -backend-config=password=${TF_PASSWORD} \
+      -backend-config=lock_method=POST \
+      -backend-config=unlock_method=DELETE \
+      -backend-config=retry_wait_min=5
   script:
-    - terraform apply --auto-approve=true
-    - terraform output vm_private_key > key
-    - terraform output vm_public_key > key.pub
-    - sed -i '1d;$d' key
+    - terraform apply --auto-approve
+    - terraform output -raw vm_private_key > key
+    - terraform output -raw vm_public_key > key.pub
     - chmod 600 key
-    # - cat key
-  only:
-    - main
+  only: [main]
   artifacts:
-    paths:
-      - scripts
-      - key
-
+    paths: [scripts, key]
 
 init-master:
   stage: init-master
-  image:
-    name: ubuntu:latest
+  image: { name: ubuntu:22.04 }
   variables:
-    K8S1: 192.168.69.80  # IP address of the master node
+    K8S1: 192.168.69.80
     ROLE: master
-    TOKEN: abcdef.0123456789abcdef  # The token used to initialize the master node
+    TOKEN: abcdef.0123456789abcdef
   before_script:
-    - apt update && apt install -y openssh-client  # Install SSH client for remote connections
+    - apt-get update && apt-get install -y openssh-client
   script:
-    # Install k8s on the master node
-    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "sudo ROLE=$ROLE TOKEN=$TOKEN bash -s" < scripts/install.sh
-
-    # Copy the hash file from master node to CI
+    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "sudo bash -s" < scripts/install.sh "$ROLE" "$TOKEN"
     - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/hash $CI_PROJECT_DIR/hash
-  dependencies:
-    - deploy
-
-  when: manual  # Make this job manual to control when it's triggered
+  dependencies: [deploy]
+  when: manual
   artifacts:
-    paths:
-      - hash  # Save the hash file as an artifact
-      - key   # Save the SSH key used for connections
-
+    paths: [hash, key]
 
 init-workers:
   stage: init-workers
-  image:
-    name: ubuntu:latest
+  image: { name: ubuntu:22.04 }
   variables:
-    K8S1: 192.168.69.80
     K8S2: 192.168.69.81
     K8S3: 192.168.69.82
     JOINTOKEN: k8s-join-token.abcdef1234567890
-    ROLE: worker
   before_script:
-    - apt update && apt install -y openssh-client
+    - apt-get update && apt-get install -y openssh-client
   script:
-    # Install k8s on workers
-    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S2" "sudo bash -c 'ROLE=$ROLE bash -s'" < scripts/install.sh
-    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S3" "sudo bash -c 'ROLE=$ROLE bash -s'" < scripts/install.sh
-
-    # Download hash artifact from init-master stage
-    - mkdir -p /tmp/artifacts
-    - cp $CI_PROJECT_DIR/hash /tmp/artifacts/hash
+    - for node in "$K8S2" "$K8S3"; do
+        ssh -i key -o StrictHostKeyChecking=no k8s@"$node" \
+          "sudo bash -s" < scripts/install.sh worker "$K8S1" "$JOINTOKEN" "$(cat $CI_PROJECT_DIR/hash)"
+      done
+  dependencies: [init-master]
   when: manual
-  dependencies:
-    - init-master
-
 
 destroy:
   stage: destroy
-  image: 
-    name: hashicorp/terraform:latest
-    entrypoint: [""]
+  image: { name: hashicorp/terraform:latest, entrypoint: [""] }
   before_script:
     - export TF_VAR_username=$(echo "$PVEUSER" | base64 -d)
     - export TF_VAR_password=$(echo "$PVEPASSWORD" | base64 -d)
-    - export PROJECT_ID=5
     - export TF_USERNAME=$(echo "$GITLABUSERNAME" | base64 -d)
     - export TF_PASSWORD=$(echo "$GITLABACCESSTOKEN" | base64 -d)
-    - export TF_ADDRESS="http://git.home/api/v4/projects/5/terraform/state/proxmox-k8s-infra"
-    - terraform init -backend-config=address=${TF_ADDRESS} -backend-config=lock_address=${TF_ADDRESS}/lock -backend-config=unlock_address=${TF_ADDRESS}/lock -backend-config=username=${TF_USERNAME} -backend-config=password=${TF_PASSWORD} -backend-config=lock_method=POST -backend-config=unlock_method=DELETE -backend-config=retry_wait_min=5
+    - terraform init -backend-config=address=${TF_ADDRESS} \
+      -backend-config=lock_address=${TF_ADDRESS}/lock \
+      -backend-config=unlock_address=${TF_ADDRESS}/lock \
+      -backend-config=username=${TF_USERNAME} \
+      -backend-config=password=${TF_PASSWORD} \
+      -backend-config=lock_method=POST \
+      -backend-config=unlock_method=DELETE \
+      -backend-config=retry_wait_min=5
   script:
-    - terraform destroy --auto-approve=true
+    - terraform destroy --auto-approve
   when: manual
