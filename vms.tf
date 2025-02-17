@@ -46,6 +46,7 @@ resource "proxmox_virtual_environment_vm" "k8s2" {
   stop_on_destroy = true
   initialization {
     user_account {
+      keys        = [trimspace(tls_private_key.vm_key.public_key_openssh)]
       username    = var.os_user
       password    = var.os_password
     }
@@ -87,6 +88,7 @@ resource "proxmox_virtual_environment_vm" "k8s3" {
   stop_on_destroy = true
   initialization {
     user_account {
+      keys        = [trimspace(tls_private_key.vm_key.public_key_openssh)]
       username    = var.os_user
       password    = var.os_password
     }
