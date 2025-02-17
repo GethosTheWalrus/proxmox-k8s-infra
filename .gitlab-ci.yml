@@ -4,6 +4,7 @@ stages:
   - init-workers
   - destroy
 
+
 deploy:
   stage: deploy
   image: 
@@ -54,6 +55,7 @@ init-master:
       - hash
       - key
 
+
 init-workers:
   stage: init-workers
   image:
@@ -79,10 +81,6 @@ init-workers:
   when: manual
   dependencies:
     - init-master
-  artifacts:
-    paths:
-      - /tmp/artifacts/hash
-      - /tmp/artifacts/key
 
 
 destroy:
