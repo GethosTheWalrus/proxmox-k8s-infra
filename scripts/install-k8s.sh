@@ -57,7 +57,13 @@ if [ "$ROLE" == "master" ]; then
 
   # Initialize Kubernetes master node with the provided token
   echo "Initializing Kubernetes master node..."
-  sudo kubeadm init --pod-network-cidr=10.69.0.0/16 --token $TOKEN
+  sudo kubeadm init --pod-network-cidr=10.69.0.0/16 --token $TOKEN 2>&1 | tee kubeadm-init.log # Redirect kubeadm init output to log file
+
+  # Check if kubeadm init was successful
+  if [ $? -ne 0 ]; then
+    echo "kubeadm init failed. Exiting."
+    exit 1
+  fi
 
   # Wait for the Kubernetes API to be up and running - Improved Readiness Check
   echo "Waiting for Kubernetes API to be ready..."
@@ -73,7 +79,23 @@ if [ "$ROLE" == "master" ]; then
     sleep 5
   done
   if [ "$API_READY" == false ]; then
-    echo "ERROR: Kubernetes API server did not become ready after waiting. Check kubeadm init logs."
+    echo "ERROR: Kubernetes API server did not become ready after waiting. Check kubeadm init logs, kubelet status, and containerd status."
+
+    echo "--- Dumping kubeadm init logs ---" # Dump kubeadm init logs
+    cat kubeadm-init.log || true
+
+    echo "--- Getting kubelet status ---" # Get kubelet status
+    sudo systemctl status kubelet
+
+    echo "--- Getting kubelet logs ---" # Get kubelet logs
+    sudo journalctl -u kubelet -n 50 --no-pager
+
+    echo "--- Getting containerd status ---" # Get containerd status
+    sudo systemctl status containerd
+
+    echo "--- Getting containerd logs ---" # Get containerd logs
+    sudo journalctl -u containerd -n 50 --no-pager
+
     exit 1
   fi
   echo "Kubernetes API server is ready!"
