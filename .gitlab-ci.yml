@@ -101,8 +101,9 @@ deploy-dashboard:
   - if: $CI_COMMIT_TITLE =~ /-init$/
     when: always
     allow_failure: false
-  dependencies:
-    - build
+  needs:
+    - init-master
+    - init-workers
 
 
 deploy-metallb:
@@ -141,8 +142,9 @@ deploy-metallb:
       EOF
   rules:
     - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
-  dependencies:
-    - build
+  needs:
+    - init-master
+    - init-workers
 
 
 destroy-cluster:
