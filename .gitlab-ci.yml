@@ -167,3 +167,4 @@ destroy-cluster:
   allow_failure: true
   rules:
   - when: manual
+  needs: []
