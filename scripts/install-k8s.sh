@@ -51,10 +51,6 @@ sudo sysctl net.ipv4.ip_forward=1
 echo "net.ipv4.ip_forward = 1" | sudo tee -a /etc/sysctl.conf
 sudo sysctl -p
 
-# Install Calico networking for the Kubernetes cluster
-echo "Installing Calico networking for the cluster..."
-sudo -u $SUDO_USER kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
-
 # If running on the master node, perform master-specific setup
 if [ "$ROLE" == "master" ]; then
   echo "Configuring master node..."
@@ -62,6 +58,10 @@ if [ "$ROLE" == "master" ]; then
   # Initialize Kubernetes master node with the provided token
   echo "Initializing Kubernetes master node..."
   sudo kubeadm init --pod-network-cidr=10.69.0.0/16 --token $TOKEN
+
+  # Install Calico networking for the Kubernetes cluster
+  echo "Installing Calico networking for the cluster..."
+  sudo -u $SUDO_USER kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
 
   # Check if kubeadm init was successful
   if [ $? -ne 0 ]; then
