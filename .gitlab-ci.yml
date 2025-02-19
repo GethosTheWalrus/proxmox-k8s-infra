@@ -1,13 +1,11 @@
 stages:
-  - deploy-cluster
-  - init-master
-  - init-workers
-  - deploy-dashboard
-  - destroy-cluster
+  - build
+  - deploy
+  - destroy
 
 
 deploy-cluster:
-  stage: deploy-cluster
+  stage: build
   image: 
     name: hashicorp/terraform:latest
     entrypoint: [""]
@@ -35,7 +33,7 @@ deploy-cluster:
 
 
 init-master:
-  stage: init-master
+  stage: build
   image:
     name: ubuntu:latest
   variables:
@@ -61,7 +59,7 @@ init-master:
 
 
 init-workers:
-  stage: init-workers
+  stage: build
   image:
     name: ubuntu:latest
   variables:
@@ -86,7 +84,7 @@ init-workers:
 
 
 deploy-dashboard:
-  stage: deploy-dashboard
+  stage: deploy
   image:
     name: alpine/k8s:1.29.13
   variables:
@@ -110,8 +108,49 @@ deploy-dashboard:
     - init-workers
 
 
+deploy-metallb:
+  stage: deploy
+  image:
+    name: alpine/k8s:1.29.13
+  variables:
+    K8S1: 192.168.69.80
+    METALLB_NAMESPACE: metallb-system
+    IP_RANGE: 192.168.69.90-192.168.69.100
+  before_script:
+    - apk --no-cache add openssh-client
+  script:
+    - mkdir ~/.kube
+    - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
+    - export KUBECONFIG=~/.kube/config
+    - kubectl create namespace $METALLB_NAMESPACE --dry-run=client -o yaml | kubectl apply -f -
+    - helm repo add metallb https://metallb.github.io/metallb
+    - helm upgrade --install metallb metallb/metallb --namespace $METALLB_NAMESPACE
+    - kubectl apply -f - <<EOF
+      apiVersion: metallb.io/v1beta1
+      kind: IPAddressPool
+      metadata:
+        name: default-pool
+        namespace: $METALLB_NAMESPACE
+      spec:
+        addresses:
+        - $IP_RANGE
+      ---
+      apiVersion: metallb.io/v1beta1
+      kind: L2Advertisement
+      metadata:
+        name: default
+        namespace: $METALLB_NAMESPACE
+      EOF
+  rules:
+  - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
+  dependencies:
+    - deploy-cluster
+    - init-master
+    - init-workers
+
+
 destroy-cluster:
-  stage: destroy-cluster
+  stage: destroy
   image: 
     name: hashicorp/terraform:latest
     entrypoint: [""]
