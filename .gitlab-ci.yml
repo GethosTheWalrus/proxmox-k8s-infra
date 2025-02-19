@@ -92,10 +92,11 @@ deploy-dashboard:
   variables:
     K8S1: 192.168.69.80
   before_script:
+    - apk install -y openssh-client
+  script:
     - mkdir ~/.kube
     - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config $CI_PROJECT_DIR/.kube/config
     - export KUBECONFIG=~/.kube/config
-  script:
     # - kubectl config set-cluster cluster --server=http://$K8S1:6443
     # - kubectl config set-credentials admin --username=admin --password=admin
     # - kubectl config set-context cluster-context --cluster=cluster --user=admin
