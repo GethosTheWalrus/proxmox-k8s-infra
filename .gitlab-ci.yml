@@ -3,8 +3,7 @@ stages:
   - init-master
   - init-workers
   - deploy-dashboard
-  - destroy
-
+  - destroy-cluster
 
 deploy-cluster:
   stage: deploy-cluster
@@ -25,14 +24,12 @@ deploy-cluster:
     - terraform output vm_public_key > key.pub
     - sed -i '1d;$d' key
     - chmod 600 key
-    # - cat key
-  only:
-    - main
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
   artifacts:
     paths:
       - scripts
       - key
-
 
 init-master:
   stage: init-master
@@ -45,12 +42,10 @@ init-master:
   before_script:
     - apt update && apt install -y openssh-client
   script:
-  - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "sudo ROLE=$ROLE TOKEN=$TOKEN bash -s" < scripts/install-k8s.sh
-  - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/hash $CI_PROJECT_DIR/hash
-  when:
-    rules:
-    - if: $CI_COMMIT_TITLE =~ /-init$/
-      when: always
+    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "sudo ROLE=$ROLE TOKEN=$TOKEN bash -s" < scripts/install-k8s.sh
+    - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/hash $CI_PROJECT_DIR/hash
+  rules:
+    - if: '$CI_COMMIT_TITLE =~ /-init$/'
       allow_failure: false
   dependencies:
     - deploy-cluster
@@ -59,7 +54,6 @@ init-master:
       - hash
       - key
       - scripts
-
 
 init-workers:
   stage: init-workers
@@ -77,15 +71,12 @@ init-workers:
     - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/hash $CI_PROJECT_DIR/hash
     - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S2" "sudo ROLE=$ROLE bash -s" < $CI_PROJECT_DIR/scripts/install-k8s.sh $K8S1 $JOINTOKEN $(cat $CI_PROJECT_DIR/hash)
     - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S3" "sudo ROLE=$ROLE bash -s" < $CI_PROJECT_DIR/scripts/install-k8s.sh $K8S1 $JOINTOKEN $(cat $CI_PROJECT_DIR/hash)
-  when:
-    rules:
-    - if: $CI_COMMIT_TITLE =~ /-init$/
-      when: always
+  rules:
+    - if: '$CI_COMMIT_TITLE =~ /-init$/'
       allow_failure: false
   dependencies:
     - deploy-cluster
     - init-master
-
 
 deploy-dashboard:
   stage: deploy-dashboard
@@ -97,19 +88,16 @@ deploy-dashboard:
     - apt update && apt install -y openssh-client
   script:
     - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" 'export ROLE=$ROLE && sudo bash -s' < scripts/install-helm.sh && helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/ && helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard --create
-  when:
-    rules:
-    - if: $CI_COMMIT_TITLE =~ /-init$/
-      when: always
+  rules:
+    - if: '$CI_COMMIT_TITLE =~ /-init$/'
       allow_failure: false
   dependencies:
-    - deploy
+    - deploy-cluster
     - init-master
     - init-workers
 
-
-destroy:
-  stage: destroy
+destroy-cluster:
+  stage: destroy-cluster
   image: 
     name: hashicorp/terraform:latest
     entrypoint: [""]
@@ -123,4 +111,5 @@ destroy:
     - terraform init -backend-config=address=${TF_ADDRESS} -backend-config=lock_address=${TF_ADDRESS}/lock -backend-config=unlock_address=${TF_ADDRESS}/lock -backend-config=username=${TF_USERNAME} -backend-config=password=${TF_PASSWORD} -backend-config=lock_method=POST -backend-config=unlock_method=DELETE -backend-config=retry_wait_min=5
   script:
     - terraform destroy --auto-approve=true
-  when: manual
+  rules:
+    - when: manual
