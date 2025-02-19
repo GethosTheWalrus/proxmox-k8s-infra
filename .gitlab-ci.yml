@@ -98,8 +98,15 @@ deploy-metallb:
     - export KUBECONFIG=~/.kube/config
     - helm repo add metallb https://metallb.github.io/metallb
     - helm repo update
-    - - kubectl create namespace --dry-run=client -o yaml $METALLB_NAMESPACE | kubectl apply -f -
+    - kubectl create namespace --dry-run=client -o yaml $METALLB_NAMESPACE | kubectl apply -f -
     - helm upgrade --install metallb metallb/metallb -n $METALLB_NAMESPACE
+    - echo "--- Debugging Metallb Controller Rollout ---"
+    - kubectl get deployment metallb-controller -n $METALLB_NAMESPACE -o wide
+    - kubectl get pods -n $METALLB_NAMESPACE -l app=metallb,component=controller -o wide
+    - kubectl describe pods -n $METALLB_NAMESPACE -l app=metallb,component=controller
+    - kubectl logs -n $METALLB_NAMESPACE -l app=metallb,component=controller --all-containers=true --previous=true || true # Get previous logs if any
+    - kubectl logs -n $METALLB_NAMESPACE -l app=metallb,component=controller --all-containers=true || true # Get current logs
+    - echo "--- End of Metallb Controller Debugging ---"
     - kubectl rollout status deployment/metallb-controller -n $METALLB_NAMESPACE # Wait for controller to be ready
     - kubectl rollout status deployment/metallb-speaker -n $METALLB_NAMESPACE # Wait for speaker to be ready
     - kubectl rollout status deployment/metallb-webhook -n $METALLB_NAMESPACE # Wait for webhook to be ready (optional, but good practice)
