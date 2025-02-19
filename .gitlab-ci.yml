@@ -47,8 +47,8 @@ init-master:
   rules:
   - if: $CI_COMMIT_TITLE =~ /-init$/
     when: always
-    allow_failure: false
-  dependencies:
+  allow_failure: false
+  needs:
     - deploy-cluster
   artifacts:
     paths:
@@ -77,7 +77,7 @@ init-workers:
   - if: $CI_COMMIT_TITLE =~ /-init$/
     when: always
     allow_failure: false
-  dependencies:
+  needs:
     - deploy-cluster
     - init-master
 
@@ -102,9 +102,7 @@ deploy-dashboard:
     when: always
     allow_failure: false
   dependencies:
-    - deploy-cluster
-    - init-master
-    - init-workers
+    - build
 
 
 deploy-metallb:
@@ -144,9 +142,7 @@ deploy-metallb:
   rules:
     - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
   dependencies:
-    - deploy-cluster
-    - init-master
-    - init-workers
+    - build
 
 
 destroy-cluster:
