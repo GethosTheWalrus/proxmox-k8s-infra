@@ -92,7 +92,7 @@ deploy-dashboard:
   variables:
     K8S1: 192.168.69.80
   script:
-    - kubectl config set-cluster cluster --server=http://$K8S1:8080
+    - kubectl config set-cluster cluster --server=http://$K8S1:6443
     - kubectl config set-credentials admin --username=admin --password=admin
     - kubectl config set-context cluster-context --cluster=cluster --user=admin
     - kubectl config use-context cluster-context
