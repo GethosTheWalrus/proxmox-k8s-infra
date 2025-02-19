@@ -96,14 +96,10 @@ deploy-metallb:
     - mkdir ~/.kube
     - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
     - export KUBECONFIG=~/.kube/config
-    - kubectl get svc -n metallb-system  # Check if the webhook service is available
-    - |
-      kubectl get pods -n metallb-system | grep metallb-webhook || echo "Webhook pod is not running"
-      # If you want more info about the pods, run:
-      # kubectl describe pod <webhook-pod-name> -n metallb-system
-    - kubectl create namespace $METALLB_NAMESPACE --dry-run=client -o yaml | kubectl apply -f -
     - helm repo add metallb https://metallb.github.io/metallb
-    - helm upgrade --install metallb metallb/metallb --namespace $METALLB_NAMESPACE
+    - helm repo update
+    - kubectl create namespace $METALLB_NAMESPACE
+    - helm install metallb metallb/metallb
     - |
       cat <<EOF | kubectl apply -f -
       apiVersion: metallb.io/v1beta1
