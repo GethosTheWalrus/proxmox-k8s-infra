@@ -3,7 +3,6 @@ stages:
   - deploy
   - destroy
 
-
 deploy-cluster:
   stage: build
   image: 
