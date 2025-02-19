@@ -1,12 +1,13 @@
 stages:
-  - deploy
+  - deploy-cluster
   - init-master
   - init-workers
+  - deploy-dashboard
   - destroy
 
 
-deploy:
-  stage: deploy
+deploy-cluster:
+  stage: deploy-cluster
   image: 
     name: hashicorp/terraform:latest
     entrypoint: [""]
@@ -44,11 +45,15 @@ init-master:
   before_script:
     - apt update && apt install -y openssh-client
   script:
-  - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "sudo ROLE=$ROLE TOKEN=$TOKEN bash -s" < scripts/install.sh
+  - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "sudo ROLE=$ROLE TOKEN=$TOKEN bash -s" < scripts/install-k8s.sh
   - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/hash $CI_PROJECT_DIR/hash
+  when:
+    rules:
+    - if: $CI_COMMIT_TITLE =~ /-init$/
+      when: always
+      allow_failure: false
   dependencies:
-    - deploy
-  when: manual
+    - deploy-cluster
   artifacts:
     paths:
       - hash
@@ -70,11 +75,37 @@ init-workers:
     - apt update && apt install -y openssh-client
   script:
     - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/hash $CI_PROJECT_DIR/hash
-    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S2" "sudo ROLE=$ROLE bash -s" < $CI_PROJECT_DIR/scripts/install.sh $K8S1 $JOINTOKEN $(cat $CI_PROJECT_DIR/hash)
-    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S3" "sudo ROLE=$ROLE bash -s" < $CI_PROJECT_DIR/scripts/install.sh $K8S1 $JOINTOKEN $(cat $CI_PROJECT_DIR/hash)
-  when: manual
+    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S2" "sudo ROLE=$ROLE bash -s" < $CI_PROJECT_DIR/scripts/install-k8s.sh $K8S1 $JOINTOKEN $(cat $CI_PROJECT_DIR/hash)
+    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S3" "sudo ROLE=$ROLE bash -s" < $CI_PROJECT_DIR/scripts/install-k8s.sh $K8S1 $JOINTOKEN $(cat $CI_PROJECT_DIR/hash)
+  when:
+    rules:
+    - if: $CI_COMMIT_TITLE =~ /-init$/
+      when: always
+      allow_failure: false
   dependencies:
+    - deploy-cluster
     - init-master
+
+
+deploy-dashboard:
+  stage: deploy-dashboard
+  image:
+    name: ubuntu:latest
+  variables:
+    K8S1: 192.168.69.80
+  before_script:
+    - apt update && apt install -y openssh-client
+  script:
+    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" 'export ROLE=$ROLE && sudo bash -s' < scripts/install-helm.sh && helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/ && helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard --create
+  when:
+    rules:
+    - if: $CI_COMMIT_TITLE =~ /-init$/
+      when: always
+      allow_failure: false
+  dependencies:
+    - deploy
+    - init-master
+    - init-workers
 
 
 destroy:
