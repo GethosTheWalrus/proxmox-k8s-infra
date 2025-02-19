@@ -98,7 +98,7 @@ deploy-metallb:
     - export KUBECONFIG=~/.kube/config
     - helm repo add metallb https://metallb.github.io/metallb
     - helm repo update
-    - kubectl create namespace $METALLB_NAMESPACE
+    - - kubectl create namespace --dry-run=client -o yaml $METALLB_NAMESPACE | kubectl apply -f -
     - helm install metallb metallb/metallb -n $METALLB_NAMESPACE
     - kubectl rollout status deployment/metallb-controller -n $METALLB_NAMESPACE # Wait for controller to be ready
     - kubectl rollout status deployment/metallb-speaker -n $METALLB_NAMESPACE # Wait for speaker to be ready
