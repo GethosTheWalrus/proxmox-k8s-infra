@@ -22,7 +22,7 @@ deploy-cluster:
     - terraform output vm_public_key > key.pub
     - sed -i '1d;$d' key
     - chmod 600 key
-    # - cat key
+    - cat key
   rules:
   - if: '$CI_COMMIT_BRANCH == "main"'
   artifacts:

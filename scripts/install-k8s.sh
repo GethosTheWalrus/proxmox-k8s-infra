@@ -51,6 +51,25 @@ sudo sysctl net.ipv4.ip_forward=1
 echo "net.ipv4.ip_forward = 1" | sudo tee -a /etc/sysctl.conf
 sudo sysctl -p
 
+# Set up kubeconfig for the non-root user
+echo "Setting up kubeconfig for the non-root user..."
+USER_HOME=$(eval echo ~${SUDO_USER})
+mkdir -p $USER_HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $USER_HOME/.kube/config
+sudo chown $SUDO_USER:$SUDO_USER $USER_HOME/.kube/config
+sudo chmod 600 $USER_HOME/.kube/config
+export KUBECONFIG=$USER_HOME/.kube/config
+
+# Also make kubectl accessible for root (optional)
+mkdir -p /root/.kube
+cp -i /etc/kubernetes/admin.conf /root/.kube/config
+chown root:root /root/.kube/config
+chmod 600 /root/.kube/config
+
+# Install Calico networking for the Kubernetes cluster
+echo "Installing Calico networking for the cluster..."
+sudo -u $SUDO_USER kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
+
 # If running on the master node, perform master-specific setup
 if [ "$ROLE" == "master" ]; then
   echo "Configuring master node..."
@@ -75,25 +94,6 @@ if [ "$ROLE" == "master" ]; then
   openssl rsa -pubin -outform DER 2>/dev/null | \
   sha256sum | \
   awk '{print $1}' > hash
-
-  # Set up kubeconfig for the non-root user
-  echo "Setting up kubeconfig for the non-root user..."
-  USER_HOME=$(eval echo ~${SUDO_USER})
-  mkdir -p $USER_HOME/.kube
-  sudo cp -i /etc/kubernetes/admin.conf $USER_HOME/.kube/config
-  sudo chown $SUDO_USER:$SUDO_USER $USER_HOME/.kube/config
-  sudo chmod 600 $USER_HOME/.kube/config
-  export KUBECONFIG=$USER_HOME/.kube/config
-
-  # Also make kubectl accessible for root (optional)
-  mkdir -p /root/.kube
-  cp -i /etc/kubernetes/admin.conf /root/.kube/config
-  chown root:root /root/.kube/config
-  chmod 600 /root/.kube/config
-
-  # Install Calico networking for the Kubernetes cluster
-  echo "Installing Calico networking for the cluster..."
-  sudo -u $SUDO_USER kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
 
   echo "Master node setup complete!"
 else
