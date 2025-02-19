@@ -91,10 +91,8 @@ deploy-dashboard:
     name: alpine/k8s:1.29.13
   variables:
     K8S1: 192.168.69.80
-  before_script:
-    - apt update && apt install -y openssh-client
   script:
-    - kubectl config set-cluster cluster --server=http://$K8S1:8080 --api-version=v1
+    - kubectl config set-cluster cluster --server=http://$K8S1:8080
     - kubectl config use-context cluster
     - helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/
     - helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard --create
