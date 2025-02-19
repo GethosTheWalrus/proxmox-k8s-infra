@@ -88,7 +88,7 @@ init-workers:
 deploy-dashboard:
   stage: deploy-dashboard
   image:
-    name: alpine/k8s:latest
+    name: alpine/k8s::1.29.13
   variables:
     K8S1: 192.168.69.80
   before_script:
