@@ -97,7 +97,7 @@ deploy-dashboard:
     - kubectl config set-context cluster-context --cluster=cluster --user=admin
     - kubectl config use-context cluster-context
     - helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/
-    - helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard --create
+    - helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard --create-namespace --namespace kubernetes-dashboard
   rules:
   - if: $CI_COMMIT_TITLE =~ /-init$/
     when: always
