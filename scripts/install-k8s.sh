@@ -59,19 +59,47 @@ if [ "$ROLE" == "master" ]; then
   echo "Initializing Kubernetes master node..."
   sudo kubeadm init --pod-network-cidr=10.69.0.0/16 --token $TOKEN
 
-  # Install Calico networking for the Kubernetes cluster
+  # Wait for the Kubernetes API to be up and running - Improved Readiness Check
+  echo "Waiting for Kubernetes API to be ready..."
+  API_READY=false
+  while true; do
+    kubectl cluster-info > /dev/null 2>&1 # Check if cluster-info is accessible
+    API_SERVER_STATUS=$?
+    if [ "$API_SERVER_STATUS" -eq 0 ]; then
+      API_READY=true
+      break
+    fi
+    echo "Kubernetes API server not yet ready. Waiting..."
+    sleep 5
+  done
+  if [ "$API_READY" == false ]; then
+    echo "ERROR: Kubernetes API server did not become ready after waiting. Check kubeadm init logs."
+    exit 1
+  fi
+  echo "Kubernetes API server is ready!"
+
+  # Install Calico networking for the Kubernetes cluster - MOVED HERE, AFTER kubeadm init and API ready check
   echo "Installing Calico networking for the cluster..."
   sudo -u $SUDO_USER kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
 
-  # Check if kubeadm init was successful
-  if [ $? -ne 0 ]; then
-    echo "kubeadm init failed. Exiting."
+  # Verify Calico pods are running - ADDED
+  echo "Verifying Calico pods are running..."
+  CALICO_READY=false
+  while true; do
+    calico_pods_ready=$(sudo -u $SUDO_USER kubectl get pods -n calico-system -l k8s-app=calico-node -o go-template='{{range .items}}{{.status.phase}}{{"\n"}}{{end}}' | grep Running | wc -l)
+    if [ "$calico_pods_ready" -eq 3 ]; then # Assuming 3 nodes in your cluster, adjust if needed
+      CALICO_READY=true
+      break
+    fi
+    echo "Waiting for Calico pods to become ready..."
+    sleep 10
+  done
+  if [ "$CALICO_READY" == false ]; then
+    echo "ERROR: Calico pods did not become ready. Check Calico installation logs."
     exit 1
   fi
+  echo "Calico network installation verified!"
 
-  # Wait for the Kubernetes API to be up and running
-  echo "Waiting for Kubernetes API to be up..."
-  sleep 30  # Adjust as needed based on environment
 
   # Generate the hash for the CA certificate
   echo "Generating the hash for the CA certificate..."
