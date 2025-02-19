@@ -5,6 +5,7 @@ stages:
   - deploy-dashboard
   - destroy-cluster
 
+
 deploy-cluster:
   stage: deploy-cluster
   image: 
@@ -24,12 +25,14 @@ deploy-cluster:
     - terraform output vm_public_key > key.pub
     - sed -i '1d;$d' key
     - chmod 600 key
+    # - cat key
   rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
+  - if: '$CI_COMMIT_BRANCH == "main"'
   artifacts:
     paths:
       - scripts
       - key
+
 
 init-master:
   stage: init-master
@@ -42,11 +45,12 @@ init-master:
   before_script:
     - apt update && apt install -y openssh-client
   script:
-    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "sudo ROLE=$ROLE TOKEN=$TOKEN bash -s" < scripts/install-k8s.sh
-    - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/hash $CI_PROJECT_DIR/hash
+  - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "sudo ROLE=$ROLE TOKEN=$TOKEN bash -s" < scripts/install-k8s.sh
+  - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/hash $CI_PROJECT_DIR/hash
   rules:
-    - if: '$CI_COMMIT_TITLE =~ /-init$/'
-      allow_failure: false
+  - if: $CI_COMMIT_TITLE =~ /-init$/
+    when: always
+    allow_failure: false
   dependencies:
     - deploy-cluster
   artifacts:
@@ -54,6 +58,7 @@ init-master:
       - hash
       - key
       - scripts
+
 
 init-workers:
   stage: init-workers
@@ -72,11 +77,13 @@ init-workers:
     - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S2" "sudo ROLE=$ROLE bash -s" < $CI_PROJECT_DIR/scripts/install-k8s.sh $K8S1 $JOINTOKEN $(cat $CI_PROJECT_DIR/hash)
     - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S3" "sudo ROLE=$ROLE bash -s" < $CI_PROJECT_DIR/scripts/install-k8s.sh $K8S1 $JOINTOKEN $(cat $CI_PROJECT_DIR/hash)
   rules:
-    - if: '$CI_COMMIT_TITLE =~ /-init$/'
-      allow_failure: false
+  - if: $CI_COMMIT_TITLE =~ /-init$/
+    when: always
+    allow_failure: false
   dependencies:
     - deploy-cluster
     - init-master
+
 
 deploy-dashboard:
   stage: deploy-dashboard
@@ -89,12 +96,14 @@ deploy-dashboard:
   script:
     - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" 'export ROLE=$ROLE && sudo bash -s' < scripts/install-helm.sh && helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/ && helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard --create
   rules:
-    - if: '$CI_COMMIT_TITLE =~ /-init$/'
-      allow_failure: false
+  - if: $CI_COMMIT_TITLE =~ /-init$/
+    when: always
+    allow_failure: false
   dependencies:
     - deploy-cluster
     - init-master
     - init-workers
+
 
 destroy-cluster:
   stage: destroy-cluster
@@ -112,4 +121,4 @@ destroy-cluster:
   script:
     - terraform destroy --auto-approve=true
   rules:
-    - when: manual
+  - when: manual
