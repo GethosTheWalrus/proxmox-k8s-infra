@@ -67,7 +67,7 @@ if [ "$ROLE" == "master" ]; then
 
   # Wait for the Kubernetes API to be up and running
   echo "Waiting for Kubernetes API to be up..."
-  sleep 30  # This can be adjusted based on your environment (waiting for kubelet to initialize)
+  sleep 30  # Adjust as needed based on environment
 
   # Generate the hash for the CA certificate
   echo "Generating the hash for the CA certificate..."
@@ -76,15 +76,24 @@ if [ "$ROLE" == "master" ]; then
   sha256sum | \
   awk '{print $1}' > hash
 
-  # Set up kubeconfig for the current user
-  echo "Setting up kubeconfig for the current user..."
-  mkdir -p $HOME/.kube
-  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-  sudo chown $(id -u):$(id -g) $HOME/.kube/config
+  # Set up kubeconfig for the non-root user
+  echo "Setting up kubeconfig for the non-root user..."
+  USER_HOME=$(eval echo ~${SUDO_USER})
+  mkdir -p $USER_HOME/.kube
+  sudo cp -i /etc/kubernetes/admin.conf $USER_HOME/.kube/config
+  sudo chown $SUDO_USER:$SUDO_USER $USER_HOME/.kube/config
+  sudo chmod 600 $USER_HOME/.kube/config
+  export KUBECONFIG=$USER_HOME/.kube/config
+
+  # Also make kubectl accessible for root (optional)
+  mkdir -p /root/.kube
+  cp -i /etc/kubernetes/admin.conf /root/.kube/config
+  chown root:root /root/.kube/config
+  chmod 600 /root/.kube/config
 
   # Install Calico networking for the Kubernetes cluster
   echo "Installing Calico networking for the cluster..."
-  kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
+  sudo -u $SUDO_USER kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
 
   echo "Master node setup complete!"
 else
