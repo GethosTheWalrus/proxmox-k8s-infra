@@ -125,7 +125,8 @@ deploy-metallb:
     - kubectl create namespace $METALLB_NAMESPACE --dry-run=client -o yaml | kubectl apply -f -
     - helm repo add metallb https://metallb.github.io/metallb
     - helm upgrade --install metallb metallb/metallb --namespace $METALLB_NAMESPACE
-    - kubectl apply -f - <<EOF
+    - |
+      cat <<EOF | kubectl apply -f -
       apiVersion: metallb.io/v1beta1
       kind: IPAddressPool
       metadata:
@@ -142,7 +143,7 @@ deploy-metallb:
         namespace: $METALLB_NAMESPACE
       EOF
   rules:
-  - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
   dependencies:
     - deploy-cluster
     - init-master
