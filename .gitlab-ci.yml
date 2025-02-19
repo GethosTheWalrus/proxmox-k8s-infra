@@ -138,7 +138,7 @@ deploy-dashboard:
     - helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/
     - helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard --create-namespace --namespace kubernetes-dashboard
     # Expose the dashboard service with LoadBalancer type
-    - kubectl -n kubernetes-dashboard expose svc kubernetes-dashboard --type=LoadBalancer --name=kubernetes-dashboard-external
+    - kubectl -n kubernetes-dashboard expose svc kubernetes-dashboard-kong-proxy --type=LoadBalancer --name=kubernetes-dashboard-external
   rules:
     - if: $CI_COMMIT_TITLE =~ /-init$/
   when: always
