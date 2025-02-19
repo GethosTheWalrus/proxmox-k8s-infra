@@ -82,30 +82,6 @@ init-workers:
     - init-master
 
 
-deploy-dashboard:
-  stage: deploy
-  image:
-    name: alpine/k8s:1.29.13
-  variables:
-    K8S1: 192.168.69.80
-  before_script:
-    - apk --no-cache add openssh-client
-  script:
-    - mkdir ~/.kube
-    - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
-    - export KUBECONFIG=~/.kube/config
-    - helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/
-    - helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard --create-namespace --namespace kubernetes-dashboard
-    - kubectl -n kubernetes-dashboard expose svc kubernetes-dashboard-kong-proxy --type=LoadBalancer --name=kubernetes-dashboard-external
-  rules:
-  - if: $CI_COMMIT_TITLE =~ /-init$/
-    when: always
-    allow_failure: false
-  needs:
-    - init-master
-    - init-workers
-
-
 deploy-metallb:
   stage: deploy
   image:
@@ -145,6 +121,32 @@ deploy-metallb:
   needs:
     - init-master
     - init-workers
+
+
+deploy-dashboard:
+  stage: deploy
+  image:
+    name: alpine/k8s:1.29.13
+  variables:
+    K8S1: 192.168.69.80
+  before_script:
+    - apk --no-cache add openssh-client
+  script:
+    - mkdir ~/.kube
+    - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
+    - export KUBECONFIG=~/.kube/config
+    - helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/
+    - helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard --create-namespace --namespace kubernetes-dashboard
+    # Expose the dashboard service with LoadBalancer type
+    - kubectl -n kubernetes-dashboard expose svc kubernetes-dashboard --type=LoadBalancer --name=kubernetes-dashboard-external
+  rules:
+    - if: $CI_COMMIT_TITLE =~ /-init$/
+  when: always
+  allow_failure: false
+  needs:
+    - init-master
+    - init-workers
+    - deploy-metallb
 
 
 destroy-cluster:
