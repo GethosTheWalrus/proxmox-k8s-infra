@@ -62,9 +62,21 @@ sudo sysctl -p
 sleep 5
 
 echo "y" | sudo ufw enable 
+# system
+sudo ufw allow 22
+# http
 sudo ufw allow 80
 sudo ufw allow 443
+# k8s
+sudo ufw allow 6443
+sudo ufw allow 2379
+sudo ufw allow 2380
 sudo ufw allow 10250
+sudo ufw allow 10259
+sudo ufw allow 10256
+sudo ufw allow 10257
+sudo ufw allow 30000:32767/tcp
+# metallb
 sudo ufw allow 7946
 sudo ufw allow 7472
 
