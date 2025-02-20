@@ -134,6 +134,7 @@ if [ "$ROLE" == "master" ]; then
     # sleep 10 # Wait for cleanup to propagate (optional, but can help)
     # echo "--- Cleanup complete ---"
     # # --- END CLEANUP STEPS ---
+    sudo rm custom-resources*
 
     kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.0/manifests/tigera-operator.yaml
     wget https://raw.githubusercontent.com/projectcalico/calico/v3.26.0/manifests/custom-resources.yaml
