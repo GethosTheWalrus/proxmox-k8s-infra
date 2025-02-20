@@ -1,9 +1,5 @@
 #!/bin/bash
 
-# --- Configuration ---
-INSTALL_RETRIES=5       # Maximum retries for apt install
-RETRY_DELAY=10          # Delay in seconds between retries
-
 # Ensure that ROLE is set, otherwise exit
 if [ -z "$ROLE" ]; then
   echo "ERROR: ROLE is not set. Exiting."
@@ -16,86 +12,17 @@ if [ "$ROLE" == "master" ] && [ -z "$TOKEN" ]; then
   exit 1
 fi
 
-# Function to handle apt install with retry logic
-apt_install_with_retry() {
-  local package_list="$1"
-  local attempt=0
-  while true; do
-    attempt=$((attempt + 1))
-    echo "Attempt $attempt/$INSTALL_RETRIES: Installing packages: $package_list..."
-    sudo apt-get install -y --no-install-recommends $package_list 2>&1 | tee kube-install.log
-    INSTALL_STATUS=$?
-
-    if [ "$INSTALL_STATUS" -eq 0 ]; then
-      echo "Successfully installed packages: $package_list"
-      return 0 # Success
-    else
-      echo "Kubernetes components installation failed (Attempt $attempt of $INSTALL_RETRIES). Status: $INSTALL_STATUS"
-      if grep -q "E: Could not get lock /var/lib/dpkg/lock-frontend" kube-install.log; then
-        echo "DPKG lock error DETECTED. Retrying after delay..."
-        # --- Aggressive DPKG lock handling ---
-        echo "--- Checking for and trying to clear dpkg locks ---"
-        APT_GET_PIDS=$(pidof apt-get)
-        if [ -n "$APT_GET_PIDS" ]; then
-          echo "Found apt-get processes (PIDs: $APT_GET_PIDS). Killing them..."
-          pkill -9 apt-get || true
-        fi
-        APT_PIDS=$(pidof apt)
-        if [ -n "$APT_PIDS" ]; then
-          echo "Found apt processes (PIDs: $APT_PIDS). Killing them..."
-          pkill -9 apt || true
-        fi
-        DPKG_PIDS=$(pidof dpkg)
-        if [ -n "$DPKG_PIDS" ]; then
-          echo "Found dpkg processes (PIDs: $DPKG_PIDS). Killing them..."
-          pkill -9 dpkg || true
-        fi
-
-        if [ -f /var/lib/dpkg/lock-frontend ]; then
-          if ! flock -w 0 /var/lib/dpkg/lock-frontend -c 'exit 0'; then
-            echo "Lock file /var/lib/dpkg/lock-frontend exists but is NOT held. Removing it..."
-            sudo rm -f /var/lib/dpkg/lock-frontend
-          else
-            echo "Lock file /var/lib/dpkg/lock-frontend is still held. Skipping removal."
-          fi
-        fi
-        if [ -f /var/lib/apt/lists/lock ]; then
-          if ! flock -w 0 /var/lib/apt/lists/lock -c 'exit 0'; then
-            echo "Lock file /var/lib/apt/lists/lock exists but is NOT held. Removing it..."
-            sudo rm -f /var/lib/apt/lists/lock
-          else
-            echo "Lock file /var/lib/apt/lists/lock is still held. Skipping removal."
-          fi
-        fi
-        echo "--- DPKG lock handling complete. Attempting apt-get install... ---"
-        sleep $RETRY_DELAY
-      else
-        echo "Installation failed for other reasons. Please check kube-install.log for details."
-        echo "--- Last installation attempt log (kube-install.log): ---"
-        cat kube-install.log || true
-        return 1 # Failure
-      fi
-    fi
-
-    if [ "$attempt" -ge "$INSTALL_RETRIES" ]; then
-      echo "ERROR: Max retries reached for Kubernetes components installation. Exiting."
-      echo "--- Last installation attempt log (kube-install.log): ---"
-      cat kube-install.log || true
-      return 1 # Failure - Max retries reached
-    fi
-  done
-}
-
 # Update and upgrade the system
 echo "Updating and upgrading system packages..."
 sudo apt update && sudo apt upgrade -y
 
+sleep(5)
+
 # Install necessary dependencies
 echo "Installing dependencies..."
-apt_install_with_retry "apt-transport-https ca-certificates curl gnupg lsb-release"
-if [ $? -ne 0 ]; then
-  exit 1
-fi
+sudo apt install -y apt-transport-https ca-certificates curl gnupg lsb-release
+
+sleep(5)
 
 # Disable swap (important for Kubernetes)
 echo "Disabling swap..."
@@ -104,14 +31,13 @@ sudo sed -i '/ swap / s/^/#/' /etc/fstab
 
 # Install containerd
 echo "Installing containerd..."
-apt_install_with_retry "containerd"
-if [ $? -ne 0 ]; then
-  exit 1
-fi
+sudo apt install -y containerd
 sudo mkdir -p /etc/containerd
 sudo containerd config default | sudo tee /etc/containerd/config.toml
 sudo systemctl restart containerd
 sudo systemctl enable containerd
+
+sleep(5)
 
 # Add Kubernetes apt repository
 echo "Adding Kubernetes APT repository..."
@@ -119,12 +45,11 @@ curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.32/deb/Release.key | sudo gpg --
 echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.32/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
 sudo apt update
 
+sleep(5)
+
 # Install Kubernetes components
 echo "Installing Kubernetes components..."
-apt_install_with_retry "kubelet kubeadm kubectl"
-if [ $? -ne 0 ]; then
-  exit 1
-fi
+sudo apt install -y kubelet kubeadm kubectl
 sudo apt-mark hold kubelet kubeadm kubectl
 sudo systemctl enable --now kubelet
 
@@ -133,6 +58,8 @@ echo "Enabling IP forwarding..."
 sudo sysctl net.ipv4.ip_forward=1
 echo "net.ipv4.ip_forward = 1" | sudo tee -a /etc/sysctl.conf
 sudo sysctl -p
+
+sleep(5)
 
 # If running on the master node, perform master-specific setup
 if [ "$ROLE" == "master" ]; then
@@ -155,7 +82,7 @@ if [ "$ROLE" == "master" ]; then
 
   # Initialize Kubernetes master node with the provided token - INCREASED VERBOSITY
   echo "Initializing Kubernetes master node..."
-  kubeadm init --pod-network-cidr=10.69.0.0/16 --token $TOKEN --v=6 2>&1 | tee kubeadm-init.log # Redirect kubeadm init output to log file, VERBOSITY INCREASED
+  kubeadm init --pod-network-cidr=10.69.0.0/16 --token $TOKEN --v=6 2>&1 | tee kubeadm-init.log # Redirect kubeadm init output to log file, VERBOSITY INCREASED 
 
   # --- DIAGNOSTIC STEP: crictl pods AFTER kubeadm init, BEFORE readiness check ---
   echo "--- crictl pods AFTER kubeadm init, BEFORE readiness check ---"
