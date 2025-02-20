@@ -4,11 +4,7 @@
 
 # --- Configuration (can be passed as environment variables or arguments) ---
 K8S1="${K8S1:?Error: K8S1 is not set (Master Node IP)}"
-METALLB_NAMESPACE="${METALLB_NAMESPACE:-metallb-system}" # Default namespace
-IP_RANGE="${IP_RANGE:?Error: IP_RANGE is not set}"
-
-# --- Ensure required tools are installed (assuming alpine/k8s image already has them or CI's before_script handles it) ---
-# apk --no-cache add openssh-client kubectl helm # Moved to CI's before_script
+METALLB_NAMESPACE="${METALLB_NAMESPACE:-metallb-system}"
 
 # --- Setup kubectl kubeconfig ---
 mkdir -p ~/.kube
@@ -56,21 +52,6 @@ echo "metallb-webhook deployment readiness confirmed."
 
 # --- Apply IPAddressPool and L2Advertisement configurations ---
 echo "--- Applying IPAddressPool and L2Advertisement configurations ---"
-cat <<EOF | kubectl apply -f -
-apiVersion: metallb.io/v1beta1
-kind: IPAddressPool
-metadata:
-  name: default-pool
-  namespace: $METALLB_NAMESPACE
-spec:
-  addresses:
-  - $IP_RANGE
----
-apiVersion: metallb.io/v1beta1
-kind: L2Advertisement
-metadata:
-  name: default
-  namespace: $METALLB_NAMESPACE
-EOF
+kubectl apply -f metallb-config.yaml
 
 echo "Metallb deployment script completed successfully!"
