@@ -29,12 +29,12 @@ echo "--- Installing/Upgrading Metallb Helm Chart in namespace: ${METALLB_NAMESP
 helm upgrade --install metallb metallb/metallb -n "$METALLB_NAMESPACE"
 
 # --- Wait for webhook deployment to be ready ---
-echo "--- Waiting for metallb-webhook deployment to be ready ---"
+echo "--- Waiting for metallb-webhook service to be ready ---"
 WEBHOOK_READY=false
 for i in {1..12}; do # Retry loop
-  kubectl rollout status deployment/metallb-webhook -n "$METALLB_NAMESPACE" --timeout=10s
+  kubectl get service -n "$METALLB_NAMESPACE" | grep metallb-webhook-service | wc -l
   WEBHOOK_STATUS=$?
-  if [ "$WEBHOOK_STATUS" -eq 0 ]; then
+  if [ "$WEBHOOK_STATUS" -ne 0 ]; then
     WEBHOOK_READY=true
     echo "metallb-webhook deployment is ready!"
     break
@@ -47,9 +47,9 @@ done
 
 if [ "$WEBHOOK_READY" == false ]; then
   echo "ERROR: metallb-webhook deployment failed to become ready after multiple retries. Exiting."
-  kubectl get deployment/metallb-webhook -n "$METALLB_NAMESPACE" -o yaml # Get deployment YAML for debugging
-  kubectl get pods -n "$METALLB_NAMESPACE" -l app=metallb,component=webhook -o yaml # Get pod YAML for debugging
-  kubectl logs -n "$METALLB_NAMESPACE" -l app=metallb,component=webhook --all-containers # Get webhook pod logs
+  kubectl get deployment/metallb-webhook -n "$METALLB_NAMESPACE" -o yaml
+  kubectl get pods -n "$METALLB_NAMESPACE" -l app=metallb,component=webhook -o yaml
+  kubectl logs -n "$METALLB_NAMESPACE" -l app=metallb,component=webhook --all-containers
   exit 1
 fi
 echo "metallb-webhook deployment readiness confirmed."
