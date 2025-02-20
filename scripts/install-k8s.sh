@@ -94,8 +94,41 @@ if [ "$ROLE" == "master" ]; then
     sleep 5
   done
   if [ "$API_READY" == false ]; then
-    echo "ERROR: Kubernetes API server did not become ready after waiting. Check kubeadm init logs, kubelet status, and containerd status."
-    # ... (rest of the error logging block remains the same) ...
+    echo "ERROR: Kubernetes API server did not become ready after waiting. Deeper diagnostics:"
+
+    echo "--- Dumping kubeadm init logs (again) ---" # Re-dump kubeadm init logs
+    cat kubeadm-init.log || true
+
+    echo "--- Getting kubelet status (again) ---" # Re-get kubelet status
+    sudo systemctl status kubelet
+
+    echo "--- Getting kubelet logs (again, last 100 lines) ---" # More kubelet logs
+    sudo journalctl -u kubelet -n 100 --no-pager
+
+    echo "--- Getting containerd status (again) ---" # Re-get containerd status
+    sudo systemctl status containerd
+
+    echo "--- Getting containerd logs (again, last 100 lines) ---" # More containerd logs
+    sudo journalctl -u containerd -n 100 --no-pager
+
+    echo "--- Checking Kubernetes control plane pod status using crictl ---" # NEW: Check pod status with crictl
+    sudo crictl pods --namespace kube-system
+
+    echo "--- Getting logs of kube-apiserver pod (if running) using crictl ---" # NEW: Get apiserver logs (if pod exists)
+    API_SERVER_POD_ID=$(sudo crictl pods --namespace kube-system -o json | jq -r '.items[] | select(.metadata.name | contains("kube-apiserver")) | .id')
+    if [ -n "$API_SERVER_POD_ID" ]; then
+      echo "Found kube-apiserver pod ID: $API_SERVER_POD_ID. Dumping logs..."
+      sudo crictl logs $API_SERVER_POD_ID
+    else
+      echo "kube-apiserver pod ID not found. Pod may have failed to start."
+    fi
+
+    echo "--- Checking system resource usage (CPU, Memory, Disk) ---" # NEW: Resource usage check
+    uptime
+    free -m
+    df -h
+
+    exit 1
   fi
   echo "Kubernetes API server is ready!"
 
