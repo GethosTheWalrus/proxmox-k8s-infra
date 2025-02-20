@@ -55,13 +55,36 @@ sudo sysctl -p
 if [ "$ROLE" == "master" ]; then
   echo "Configuring master node..."
 
+  # --- CLEANUP STEPS ADDED HERE ---
+  echo "--- Cleaning up previous Kubernetes installation ---"
+  sudo kubeadm reset -f 2>&1 | tee kubeadm-reset.log # Reset kubeadm and log output
+  if [ $? -ne 0 ]; then
+    echo "kubeadm reset failed. Please check kubeadm-reset.log for errors. Exiting."
+    cat kubeadm-reset.log || true
+    exit 1
+  fi
+  sudo rm -rf /var/lib/etcd # Remove etcd data directory
+  # --- CLEANUP STEPS END ---
+
   # Install Calico networking for the Kubernetes cluster
   echo "Installing Calico networking for the cluster..."
   sudo -u $SUDO_USER kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
 
-  # Initialize Kubernetes master node with the provided token
+  # --- DIAGNOSTIC STEP: crictl pods BEFORE kubeadm init ---
+  echo "--- crictl pods BEFORE kubeadm init ---"
+  sudo crictl pods --namespace kube-system
+
+  # Initialize Kubernetes master node with the provided token - INCREASED VERBOSITY
   echo "Initializing Kubernetes master node..."
-  sudo kubeadm init --pod-network-cidr=10.69.0.0/16 --token $TOKEN 2>&1 | tee kubeadm-init.log # Redirect kubeadm init output to log file
+  sudo kubeadm init --pod-network-cidr=10.69.0.0/16 --token $TOKEN --v=6 2>&1 | tee kubeadm-init.log # Redirect kubeadm init output to log file, VERBOSITY INCREASED
+
+  # --- DIAGNOSTIC STEP: crictl pods AFTER kubeadm init, BEFORE readiness check ---
+  echo "--- crictl pods AFTER kubeadm init, BEFORE readiness check ---"
+  sudo crictl pods --namespace kube-system
+
+  # --- PAUSE AFTER kubeadm init ---
+  echo "--- Pausing for 15 seconds after kubeadm init to allow pod logging ---"
+  sleep 15
 
   # Check if kubeadm init was successful
   if [ $? -ne 0 ]; then
@@ -88,43 +111,51 @@ if [ "$ROLE" == "master" ]; then
       break
     else
       echo "Kubernetes API server not yet ready. Waiting... (Retry: $RETRY_COUNT)"
-      echo "ERROR: Kubernetes API server did not become ready after waiting. Deeper diagnostics:"
-
-      echo "--- Dumping kubeadm init logs (again) ---" # Re-dump kubeadm init logs
-      cat kubeadm-init.log || true
-
-      echo "--- Getting kubelet status (again) ---" # Re-get kubelet status
-      sudo systemctl status kubelet
-
-      echo "--- Getting kubelet logs (again, last 100 lines) ---" # More kubelet logs
-      sudo journalctl -u kubelet -n 100 --no-pager
-
-      echo "--- Getting containerd status (again) ---" # Re-get containerd status
-      sudo systemctl status containerd
-
-      echo "--- Getting containerd logs (again, last 100 lines) ---" # More containerd logs
-      sudo journalctl -u containerd -n 100 --no-pager
-
-      echo "--- Checking Kubernetes control plane pod status using crictl ---" # NEW: Check pod status with crictl
-      sudo crictl pods --namespace kube-system
-
-      echo "--- Getting logs of kube-apiserver pod (if running) using crictl ---" # NEW: Get apiserver logs (if pod exists)
-      API_SERVER_POD_ID=$(sudo crictl pods --namespace kube-system -o json | jq -r '.items[] | select(.metadata.name | contains("kube-apiserver")) | .id')
-      if [ -n "$API_SERVER_POD_ID" ]; then
-        echo "Found kube-apiserver pod ID: $API_SERVER_POD_ID. Dumping logs..."
-        sudo crictl logs $API_SERVER_POD_ID
-      else
-        echo "kube-apiserver pod ID not found. Pod may have failed to start."
-      fi
-
-      echo "--- Checking system resource usage (CPU, Memory, Disk) ---" # NEW: Resource usage check
-      uptime
-      free -m
-      df -h
+      echo "kubectl cluster-info output (Retry: $RETRY_COUNT):" # Print captured output if not ready
+      echo "$KUBECTL_OUTPUT"
     fi
     sleep 5
   done
-  
+  if [ "$API_READY" == false ]; then
+    echo "ERROR: Kubernetes API server did not become ready after waiting. Deeper diagnostics:"
+
+    echo "--- Dumping kubeadm init logs (again) ---" # Re-dump kubeadm init logs
+    cat kubeadm-init.log || true
+    echo "--- Dumping kubeadm reset logs ---" # Dump kubeadm reset logs
+    cat kubeadm-reset.log || true
+
+    echo "--- Getting kubelet status (again) ---" # Re-get kubelet status
+    sudo systemctl status kubelet
+
+    echo "--- Getting kubelet logs (again, last 100 lines) ---" # More kubelet logs
+    sudo journalctl -u kubelet -n 100 --no-pager
+
+    echo "--- Getting containerd status (again) ---" # Re-get containerd status
+    sudo systemctl status containerd
+
+    echo "--- Getting containerd logs (again, last 100 lines) ---" # More containerd logs
+    sudo journalctl -u containerd -n 100 --no-pager
+
+    # --- DIAGNOSTIC STEP: crictl pods in ERROR BLOCK (IMMEDIATELY AFTER READINESS FAILURE) ---
+    echo "--- crictl pods in ERROR BLOCK (after readiness failure) ---"
+    sudo crictl pods --namespace kube-system
+
+    echo "--- Getting logs of kube-apiserver pod (if running) using crictl ---" # NEW: Get apiserver logs (if pod exists)
+    API_SERVER_POD_ID=$(sudo crictl pods --namespace kube-system -o json | jq -r '.items[] | select(.metadata.name | contains("kube-apiserver")) | .id')
+    if [ -n "$API_SERVER_POD_ID" ]; then
+      echo "Found kube-apiserver pod ID: $API_SERVER_POD_ID. Dumping logs..."
+      sudo crictl logs $API_SERVER_POD_ID
+    else
+      echo "kube-apiserver pod ID not found. Pod may have failed to start or has already terminated."
+    fi
+
+    echo "--- Checking system resource usage (CPU, Memory, Disk) ---" # NEW: Resource usage check
+    uptime
+    free -m
+    df -h
+
+    exit 1
+  fi
   echo "Kubernetes API server is ready!"
 
   # Verify Calico pods are running - ADDED
