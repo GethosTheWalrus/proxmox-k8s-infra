@@ -121,8 +121,6 @@ if [ "$ROLE" == "master" ]; then
       uptime
       free -m
       df -h
-
-      exit 1
     fi
     sleep 5
   done
