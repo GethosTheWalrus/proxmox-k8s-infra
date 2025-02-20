@@ -55,6 +55,10 @@ sudo sysctl -p
 if [ "$ROLE" == "master" ]; then
   echo "Configuring master node..."
 
+  # Install Calico networking for the Kubernetes cluster
+  echo "Installing Calico networking for the cluster..."
+  sudo -u $SUDO_USER kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
+
   # Initialize Kubernetes master node with the provided token
   echo "Initializing Kubernetes master node..."
   sudo kubeadm init --pod-network-cidr=10.69.0.0/16 --token $TOKEN 2>&1 | tee kubeadm-init.log # Redirect kubeadm init output to log file
@@ -102,10 +106,6 @@ if [ "$ROLE" == "master" ]; then
   fi
   
   echo "Kubernetes API server is ready!"
-
-  # Install Calico networking for the Kubernetes cluster - MOVED HERE, AFTER kubeadm init and API ready check
-  echo "Installing Calico networking for the cluster..."
-  sudo -u $SUDO_USER kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
 
   # Verify Calico pods are running - ADDED
   echo "Verifying Calico pods are running..."
