@@ -105,7 +105,11 @@ if [ "$ROLE" == "master" ]; then
     RETRY_COUNT=$((RETRY_COUNT + 1))
     echo "kubectl cluster-info attempt - Retry: $RETRY_COUNT - Time: $(date +%Y-%m-%d_%H:%M:%S) - Explicit Kubeconfig" # Debug message with retry count
 
-    echo "kubectl cluster-info attempt - Status Code: $API_SERVER_STATUS - Retry: $RETRY_COUNT - Time: $(date +%Y-%m-%d_%H:%M:%S)" # Echo status code again
+    echo "kubectl cluster-info attempt - Status Code: $API_SERVER_STATUS - Retry: $RETRY_COUNT - Time: $(date +%Y-%m-%d_%H:%M:%S)"
+
+    # Get kubectl cluster-info AND status INSIDE the loop
+    KUBECTL_OUTPUT=$(kubectl cluster-info 2>&1)
+    API_SERVER_STATUS=$?
 
     # Set up kubeconfig for the non-root user
     echo "Setting up kubeconfig for the non-root user..."
