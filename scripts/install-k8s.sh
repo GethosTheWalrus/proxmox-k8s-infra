@@ -101,7 +101,8 @@ if [ "$ROLE" == "master" ]; then
     RETRY_COUNT=$((RETRY_COUNT + 1))
     echo "kubectl cluster-info attempt - Retry: $RETRY_COUNT - Time: $(date +%Y-%m-%d_%H:%M:%S)" # Debug message with retry count
 
-    KUBECTL_OUTPUT=$(kubectl cluster-info 2>&1) # Capture ALL output (STDOUT and STDERR)
+    # --- DIAGNOSTIC: Explicitly use kubeconfig and log output ---
+    KUBECTL_OUTPUT=$(kubectl cluster-info --kubeconfig /etc/kubernetes/admin.conf 2>&1) # Explicit kubeconfig
     API_SERVER_STATUS=$?
 
     echo "kubectl cluster-info attempt - Status Code: $API_SERVER_STATUS - Retry: $RETRY_COUNT - Time: $(date +%Y-%m-%d_%H:%M:%S)" # Echo status code again
@@ -123,6 +124,10 @@ if [ "$ROLE" == "master" ]; then
     cat kubeadm-init.log || true
     echo "--- Dumping kubeadm reset logs ---" # Dump kubeadm reset logs
     cat kubeadm-reset.log || true
+
+    # --- DIAGNOSTIC: Dump admin.conf content ---
+    echo "--- Dumping /etc/kubernetes/admin.conf content ---"
+    sudo cat /etc/kubernetes/admin.conf || true
 
     echo "--- Getting kubelet status (again) ---" # Re-get kubelet status
     sudo systemctl status kubelet
