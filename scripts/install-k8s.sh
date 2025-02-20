@@ -68,7 +68,7 @@ if [ "$ROLE" == "master" ]; then
 
   # Install Calico networking for the Kubernetes cluster
   echo "Installing Calico networking for the cluster..."
-  sudo -u $SUDO_USER kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
+  sudo -u k8s kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
 
   # --- DIAGNOSTIC STEP: crictl pods BEFORE kubeadm init ---
   echo "--- crictl pods BEFORE kubeadm init ---"
@@ -171,7 +171,7 @@ if [ "$ROLE" == "master" ]; then
   echo "Verifying Calico pods are running..."
   CALICO_READY=false
   while true; do
-    calico_pods_ready=$(sudo -u $SUDO_USER kubectl get pods -n calico-system -l k8s-app=calico-node -o go-template='{{range .items}}{{.status.phase}}{{"\n"}}{{end}}' | grep Running | wc -l)
+    calico_pods_ready=$(sudo -u k8s kubectl get pods -n calico-system -l k8s-app=calico-node -o go-template='{{range .items}}{{.status.phase}}{{"\n"}}{{end}}' | grep Running | wc -l)
     if [ "$calico_pods_ready" -eq 3 ]; then # Assuming 3 nodes in your cluster, adjust if needed
       CALICO_READY=true
       break
@@ -196,11 +196,11 @@ if [ "$ROLE" == "master" ]; then
   # Set up kubeconfig for the non-root user
   echo "Setting up kubeconfig for the non-root user..."
   USER_HOME=$(eval echo ~${SUDO_USER})
-  mkdir -p $USER_HOME/.kube
-  sudo cp -i /etc/kubernetes/admin.conf $USER_HOME/.kube/config
-  sudo chown $SUDO_USER:$SUDO_USER $USER_HOME/.kube/config
-  sudo chmod 600 $USER_HOME/.kube/config
-  export KUBECONFIG=$USER_HOME/.kube/config
+  mkdir -p /home/k8s/.kube
+  sudo cp -i /etc/kubernetes/admin.conf /home/k8s/.kube/config
+  sudo chown k8s:k8s /home/k8s/.kube/config
+  sudo chmod 600 /home/k8s/.kube/config
+  export KUBECONFIG=/home/k8s/.kube/config
 
   # Also make kubectl accessible for root (optional)
   mkdir -p /root/.kube
@@ -229,12 +229,11 @@ else
 
   # Set up kubeconfig for the non-root user
   echo "Setting up kubeconfig for the non-root user..."
-  USER_HOME=$(eval echo ~${SUDO_USER})
-  mkdir -p $USER_HOME/.kube
-  sudo cp -i /etc/kubernetes/admin.conf $USER_HOME/.kube/config
-  sudo chown $SUDO_USER:$SUDO_USER $USER_HOME/.kube/config
-  sudo chmod 600 $USER_HOME/.kube/config
-  export KUBECONFIG=$USER_HOME/.kube/config
+  mkdir -p /home/k8s/.kube
+  sudo cp -i /etc/kubernetes/admin.conf /home/k8s/.kube/config
+  sudo chown k8s:$k8s /home/k8s/.kube/config
+  sudo chmod 600 /home/k8s/.kube/config
+  export KUBECONFIG=/home/k8s/.kube/config
 
   # Also make kubectl accessible for root (optional)
   mkdir -p /root/.kube
