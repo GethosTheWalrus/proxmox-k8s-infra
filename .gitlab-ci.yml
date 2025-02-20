@@ -97,6 +97,8 @@ deploy-metallb:
     - scripts/install-metallb.sh
   rules:
     - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
+      when: always
+    - when: manual
   needs:
     - init-master
     - init-workers
@@ -121,7 +123,8 @@ deploy-dashboard:
     - kubectl -n kubernetes-dashboard expose svc kubernetes-dashboard-kong-proxy --type=LoadBalancer --name=kubernetes-dashboard-external
   rules:
     - if: $CI_COMMIT_TITLE =~ /-init$/
-  when: always
+      when: always
+    - when: manual
   allow_failure: false
   needs:
     - init-master
