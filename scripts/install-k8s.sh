@@ -71,6 +71,7 @@ if [ "$ROLE" == "master" ]; then
   kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.0/manifests/tigera-operator.yaml
   wget https://raw.githubusercontent.com/projectcalico/calico/v3.26.0/manifests/custom-resources.yaml
   sed -i "s#cidr: 192.168.0.0/16#cidr: 10.69.0.0/16#g" "custom-resources.yaml"
+  cat custom-resources.yaml
   kubectl create -f custom-resources.yaml
 
   # --- DIAGNOSTIC STEP: crictl pods BEFORE kubeadm init ---
