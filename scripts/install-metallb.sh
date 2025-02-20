@@ -20,7 +20,7 @@ echo "--- Helm Repository Setup ---"
 helm repo add metallb https://metallb.github.io/metallb
 helm repo update
 
-# --- Create Metallb Namespace ---
+# --- Create Metallb Namespace --- 
 echo "--- Creating Metallb Namespace: ${METALLB_NAMESPACE} ---"
 kubectl create namespace --dry-run=client -o yaml "$METALLB_NAMESPACE" | kubectl apply -f -
 
