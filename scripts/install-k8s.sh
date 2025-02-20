@@ -47,7 +47,7 @@ sudo apt update
 
 sleep 5
 
-# Install Kubernetes components 
+# Install Kubernetes components
 echo "Installing Kubernetes components..."
 sudo apt install -y kubelet kubeadm kubectl
 sudo apt-mark hold kubelet kubeadm kubectl
