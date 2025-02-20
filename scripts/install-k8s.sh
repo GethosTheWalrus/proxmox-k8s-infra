@@ -74,30 +74,32 @@ if [ "$ROLE" == "master" ]; then
     if [ "$API_SERVER_STATUS" -eq 0 ]; then
       API_READY=true
       break
+    else
+      if [ "$API_READY" == false ]; then
+        echo "ERROR: Kubernetes API server did not become ready after waiting. Check kubeadm init logs, kubelet status, and containerd status."
+
+        echo "--- Dumping kubeadm init logs ---" # Dump kubeadm init logs
+        cat kubeadm-init.log || true
+
+        echo "--- Getting kubelet status ---" # Get kubelet status
+        sudo systemctl status kubelet
+
+        echo "--- Getting kubelet logs ---" # Get kubelet logs
+        sudo journalctl -u kubelet -n 50 --no-pager
+
+        echo "--- Getting containerd status ---" # Get containerd status
+        sudo systemctl status containerd
+
+        echo "--- Getting containerd logs ---" # Get containerd logs
+        sudo journalctl -u containerd -n 50 --no-pager
+
+        exit 1
+      fi
     fi
     echo "Kubernetes API server not yet ready. Waiting..."
     sleep 5
   done
-  if [ "$API_READY" == false ]; then
-    echo "ERROR: Kubernetes API server did not become ready after waiting. Check kubeadm init logs, kubelet status, and containerd status."
-
-    echo "--- Dumping kubeadm init logs ---" # Dump kubeadm init logs
-    cat kubeadm-init.log || true
-
-    echo "--- Getting kubelet status ---" # Get kubelet status
-    sudo systemctl status kubelet
-
-    echo "--- Getting kubelet logs ---" # Get kubelet logs
-    sudo journalctl -u kubelet -n 50 --no-pager
-
-    echo "--- Getting containerd status ---" # Get containerd status
-    sudo systemctl status containerd
-
-    echo "--- Getting containerd logs ---" # Get containerd logs
-    sudo journalctl -u containerd -n 50 --no-pager
-
-    exit 1
-  fi
+  
   echo "Kubernetes API server is ready!"
 
   # Install Calico networking for the Kubernetes cluster - MOVED HERE, AFTER kubeadm init and API ready check
