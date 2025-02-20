@@ -68,9 +68,10 @@ if [ "$ROLE" == "master" ]; then
 
   # Install Calico networking for the Kubernetes cluster
   echo "Installing Calico networking for the cluster..."
-  kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.2/manifests/tigera-operator.yaml
-  kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.2/manifests/custom-resources.yaml
-  watch kubectl get pods -n calico-system
+  kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.0/manifests/tigera-operator.yaml
+  wget https://raw.githubusercontent.com/projectcalico/calico/v3.26.0/manifests/custom-resources.yaml
+  sed -i "s#cidr: 192.168.0.0/16#cidr: 10.69.0.0/16#g" "custom-resources.yaml"
+  kubectl create -f custom-resources.yaml
 
   # --- DIAGNOSTIC STEP: crictl pods BEFORE kubeadm init ---
   echo "--- crictl pods BEFORE kubeadm init ---"
