@@ -92,13 +92,14 @@ if [ "$ROLE" == "master" ]; then
 
         echo "--- Getting containerd logs ---" # Get containerd logs
         sudo journalctl -u containerd -n 50 --no-pager
-
-        exit 1
       fi
     fi
     echo "Kubernetes API server not yet ready. Waiting..."
     sleep 5
   done
+  if [ "$API_READY" == false ]; then
+    exit 1
+  fi
   
   echo "Kubernetes API server is ready!"
 
