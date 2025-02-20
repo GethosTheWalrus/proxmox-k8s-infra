@@ -105,11 +105,22 @@ if [ "$ROLE" == "master" ]; then
     RETRY_COUNT=$((RETRY_COUNT + 1))
     echo "kubectl cluster-info attempt - Retry: $RETRY_COUNT - Time: $(date +%Y-%m-%d_%H:%M:%S) - Explicit Kubeconfig" # Debug message with retry count
 
-    # --- DIAGNOSTIC: Explicitly use kubeconfig and log output ---
-    KUBECTL_OUTPUT=$(kubectl cluster-info --kubeconfig /etc/kubernetes/admin.conf 2>&1) # Explicit kubeconfig
-    API_SERVER_STATUS=$?
-
     echo "kubectl cluster-info attempt - Status Code: $API_SERVER_STATUS - Retry: $RETRY_COUNT - Time: $(date +%Y-%m-%d_%H:%M:%S)" # Echo status code again
+
+    # Set up kubeconfig for the non-root user
+    echo "Setting up kubeconfig for the non-root user..."
+    USER_HOME=$(eval echo ~${SUDO_USER})
+    mkdir -p /home/k8s/.kube
+    sudo cp -i /etc/kubernetes/admin.conf /home/k8s/.kube/config
+    sudo chown k8s:k8s /home/k8s/.kube/config
+    sudo chmod 600 /home/k8s/.kube/config
+    export KUBECONFIG=/home/k8s/.kube/config
+
+    # Also make kubectl accessible for root (optional)
+    mkdir -p /root/.kube
+    cp -i /etc/kubernetes/admin.conf /root/.kube/config
+    chown root:root /root/.kube/config
+    chmod 600 /root/.kube/config
 
     if [ "$API_SERVER_STATUS" -eq 0 ]; then
       API_READY=true # Set readiness flag to true
@@ -121,50 +132,6 @@ if [ "$ROLE" == "master" ]; then
     fi
     sleep 5
   done
-  if [ "$API_READY" == false ]; then
-    echo "ERROR: Kubernetes API server did not become ready after waiting. Deeper diagnostics:"
-
-    echo "--- Dumping kubeadm init logs (again) ---" # Re-dump kubeadm init logs
-    cat kubeadm-init.log || true
-    echo "--- Dumping kubeadm reset logs ---" # Dump kubeadm reset logs
-    cat kubeadm-reset.log || true
-
-    # --- DIAGNOSTIC: Dump admin.conf content in ERROR BLOCK ---
-    echo "--- Dumping /etc/kubernetes/admin.conf content in ERROR BLOCK ---"
-    sudo cat /etc/kubernetes/admin.conf || true
-
-    echo "--- Getting kubelet status (again) ---" # Re-get kubelet status
-    sudo systemctl status kubelet
-
-    echo "--- Getting kubelet logs (again, last 100 lines) ---" # More kubelet logs
-    sudo journalctl -u kubelet -n 100 --no-pager
-
-    echo "--- Getting containerd status (again) ---" # Re-get containerd status
-    sudo systemctl status containerd
-
-    echo "--- Getting containerd logs (again, last 100 lines) ---" # More containerd logs
-    sudo journalctl -u containerd -n 100 --no-pager
-
-    # --- DIAGNOSTIC STEP: crictl pods in ERROR BLOCK (IMMEDIATELY AFTER READINESS FAILURE) ---
-    echo "--- crictl pods in ERROR BLOCK (after readiness failure) ---"
-    sudo crictl pods --namespace kube-system
-
-    echo "--- Getting logs of kube-apiserver pod (if running) using crictl ---" # NEW: Get apiserver logs (if pod exists)
-    API_SERVER_POD_ID=$(sudo crictl pods --namespace kube-system -o json | jq -r '.items[] | select(.metadata.name | contains("kube-apiserver")) | .id')
-    if [ -n "$API_SERVER_POD_ID" ]; then
-      echo "Found kube-apiserver pod ID: $API_SERVER_POD_ID. Dumping logs..."
-      sudo crictl logs $API_SERVER_POD_ID
-    else
-      echo "kube-apiserver pod ID not found. Pod may have failed to start or has already terminated."
-    fi
-
-    echo "--- Checking system resource usage (CPU, Memory, Disk) ---" # NEW: Resource usage check
-    uptime
-    free -m
-    df -h
-
-    exit 1
-  fi
   echo "Kubernetes API server is ready!"
 
   # Verify Calico pods are running - ADDED
@@ -192,21 +159,6 @@ if [ "$ROLE" == "master" ]; then
   openssl rsa -pubin -outform DER 2>/dev/null | \
   sha256sum | \
   awk '{print $1}' > hash
-
-  # Set up kubeconfig for the non-root user
-  echo "Setting up kubeconfig for the non-root user..."
-  USER_HOME=$(eval echo ~${SUDO_USER})
-  mkdir -p /home/k8s/.kube
-  sudo cp -i /etc/kubernetes/admin.conf /home/k8s/.kube/config
-  sudo chown k8s:k8s /home/k8s/.kube/config
-  sudo chmod 600 /home/k8s/.kube/config
-  export KUBECONFIG=/home/k8s/.kube/config
-
-  # Also make kubectl accessible for root (optional)
-  mkdir -p /root/.kube
-  cp -i /etc/kubernetes/admin.conf /root/.kube/config
-  chown root:root /root/.kube/config
-  chmod 600 /root/.kube/config
 
   echo "Master node setup complete!"
 else
