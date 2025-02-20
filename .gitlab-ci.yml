@@ -99,7 +99,7 @@ deploy-metallb:
     - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
       when: always
     - when: manual
-  needs:
+  dependencies:
     - init-master
     - init-workers
 
@@ -126,7 +126,7 @@ deploy-dashboard:
       when: always
     - when: manual
   allow_failure: false
-  needs:
+  dependencies:
     - init-master
     - init-workers
     - deploy-metallb
