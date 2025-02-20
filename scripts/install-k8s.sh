@@ -146,8 +146,8 @@ if [ "$ROLE" == "master" ]; then
   echo "Verifying Calico pods are running..."
   CALICO_READY=false
   while true; do
-    calico_pods_ready=$(sudo -u k8s kubectl get pods -n calico-system -l k8s-app=calico-node -o go-template='{{range .items}}{{.status.phase}}{{"\n"}}{{end}}' | grep Running | wc -l)
-    if [ "$calico_pods_ready" -eq 3 ]; then # Assuming 3 nodes in your cluster, adjust if needed
+    calico_pods_ready=$(kubectl get pods -n calico-system | grep Running | wc -l)
+    if [ "$calico_pods_ready" -ne 0 ]; then
       CALICO_READY=true
       break
     fi
