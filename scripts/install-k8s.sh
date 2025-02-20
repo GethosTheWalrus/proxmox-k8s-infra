@@ -147,7 +147,7 @@ if [ "$ROLE" == "master" ]; then
   CALICO_READY=false
   while true; do
     calico_pods_ready=$(kubectl get pods -n calico-system | grep Running | wc -l)
-    if [ "$calico_pods_ready" -ne 0 ]; then
+    if [ "$calico_pods_ready" -eq 0 ]; then
       CALICO_READY=true
       break
     fi

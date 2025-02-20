@@ -34,7 +34,7 @@ WEBHOOK_READY=false
 for i in {1..12}; do # Retry loop
   kubectl get service -n "$METALLB_NAMESPACE" | grep metallb-webhook-service | wc -l
   WEBHOOK_STATUS=$?
-  if [ "$WEBHOOK_STATUS" -ne 0 ]; then
+  if [ "$WEBHOOK_STATUS" -eq 0 ]; then
     WEBHOOK_READY=true
     echo "metallb-webhook deployment is ready!"
     break
