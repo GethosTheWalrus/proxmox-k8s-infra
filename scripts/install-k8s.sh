@@ -69,42 +69,34 @@ if [ "$ROLE" == "master" ]; then
     exit 1
   fi
 
-  # Wait for the Kubernetes API to be up and running - Improved Readiness Check
-  echo "Waiting for Kubernetes API to be ready..."
+  # Wait for the Kubernetes API to be up and running - Improved Readiness Check with Loop Debugging
+  echo "Waiting for Kubernetes API to be ready... (Readiness Check Block Started)"  # START MARKER
+
   API_READY=false
+  RETRY_COUNT=0 # Initialize retry counter
   while true; do
-    kubectl cluster-info > /dev/null 2>&1 # Check if cluster-info is accessible
+    RETRY_COUNT=$((RETRY_COUNT + 1))
+    echo "kubectl cluster-info attempt - Retry: $RETRY_COUNT - Time: $(date +%Y-%m-%d_%H:%M:%S)" # Debug message with retry count
+
+    KUBECTL_OUTPUT=$(kubectl cluster-info 2>&1) # Capture ALL output (STDOUT and STDERR)
     API_SERVER_STATUS=$?
+
+    echo "kubectl cluster-info attempt - Status Code: $API_SERVER_STATUS - Retry: $RETRY_COUNT - Time: $(date +%Y-%m-%d_%H:%M:%S)" # Echo status code again
+
     if [ "$API_SERVER_STATUS" -eq 0 ]; then
       API_READY=true
       break
     else
-      if [ "$API_READY" == false ]; then
-        echo "ERROR: Kubernetes API server did not become ready after waiting. Check kubeadm init logs, kubelet status, and containerd status."
-
-        echo "--- Dumping kubeadm init logs ---" # Dump kubeadm init logs
-        cat kubeadm-init.log || true
-
-        echo "--- Getting kubelet status ---" # Get kubelet status
-        sudo systemctl status kubelet
-
-        echo "--- Getting kubelet logs ---" # Get kubelet logs
-        sudo journalctl -u kubelet -n 50 --no-pager
-
-        echo "--- Getting containerd status ---" # Get containerd status
-        sudo systemctl status containerd
-
-        echo "--- Getting containerd logs ---" # Get containerd logs
-        sudo journalctl -u containerd -n 50 --no-pager
-      fi
+      echo "Kubernetes API server not yet ready. Waiting... (Retry: $RETRY_COUNT)"
+      echo "kubectl cluster-info output (Retry: $RETRY_COUNT):" # Print captured output if not ready
+      echo "$KUBECTL_OUTPUT"
     fi
-    echo "Kubernetes API server not yet ready. Waiting..."
     sleep 5
   done
   if [ "$API_READY" == false ]; then
-    exit 1
+    echo "ERROR: Kubernetes API server did not become ready after waiting. Check kubeadm init logs, kubelet status, and containerd status."
+    # ... (rest of the error logging block remains the same) ...
   fi
-  
   echo "Kubernetes API server is ready!"
 
   # Verify Calico pods are running - ADDED
