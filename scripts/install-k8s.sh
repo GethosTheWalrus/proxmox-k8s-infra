@@ -86,6 +86,10 @@ if [ "$ROLE" == "master" ]; then
   echo "--- Pausing for 15 seconds after kubeadm init to allow pod logging ---"
   sleep 15
 
+  # --- DIAGNOSTIC: Dump admin.conf content AFTER kubeadm init, BEFORE readiness check ---
+  echo "--- Dumping /etc/kubernetes/admin.conf content AFTER kubeadm init, BEFORE readiness check ---"
+  sudo cat /etc/kubernetes/admin.conf || true
+
   # Check if kubeadm init was successful
   if [ $? -ne 0 ]; then
     echo "kubeadm init failed. Exiting."
@@ -99,7 +103,7 @@ if [ "$ROLE" == "master" ]; then
   RETRY_COUNT=0 # Initialize retry counter
   while true; do
     RETRY_COUNT=$((RETRY_COUNT + 1))
-    echo "kubectl cluster-info attempt - Retry: $RETRY_COUNT - Time: $(date +%Y-%m-%d_%H:%M:%S)" # Debug message with retry count
+    echo "kubectl cluster-info attempt - Retry: $RETRY_COUNT - Time: $(date +%Y-%m-%d_%H:%M:%S) - Explicit Kubeconfig" # Debug message with retry count
 
     # --- DIAGNOSTIC: Explicitly use kubeconfig and log output ---
     KUBECTL_OUTPUT=$(kubectl cluster-info --kubeconfig /etc/kubernetes/admin.conf 2>&1) # Explicit kubeconfig
@@ -108,7 +112,7 @@ if [ "$ROLE" == "master" ]; then
     echo "kubectl cluster-info attempt - Status Code: $API_SERVER_STATUS - Retry: $RETRY_COUNT - Time: $(date +%Y-%m-%d_%H:%M:%S)" # Echo status code again
 
     if [ "$API_SERVER_STATUS" -eq 0 ]; then
-      API_READY=true
+      API_READY=true # Set readiness flag to true
       break
     else
       echo "Kubernetes API server not yet ready. Waiting... (Retry: $RETRY_COUNT)"
@@ -125,8 +129,8 @@ if [ "$ROLE" == "master" ]; then
     echo "--- Dumping kubeadm reset logs ---" # Dump kubeadm reset logs
     cat kubeadm-reset.log || true
 
-    # --- DIAGNOSTIC: Dump admin.conf content ---
-    echo "--- Dumping /etc/kubernetes/admin.conf content ---"
+    # --- DIAGNOSTIC: Dump admin.conf content in ERROR BLOCK ---
+    echo "--- Dumping /etc/kubernetes/admin.conf content in ERROR BLOCK ---"
     sudo cat /etc/kubernetes/admin.conf || true
 
     echo "--- Getting kubelet status (again) ---" # Re-get kubelet status
