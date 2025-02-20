@@ -115,14 +115,14 @@ if [ "$ROLE" == "master" ]; then
     echo "Setting up kubeconfig for the non-root user..."
     USER_HOME=$(eval echo ~${SUDO_USER})
     mkdir -p /home/k8s/.kube
-    sudo cp -i /etc/kubernetes/admin.conf /home/k8s/.kube/config
+    sudo cp -i -n /etc/kubernetes/admin.conf /home/k8s/.kube/config
     sudo chown k8s:k8s /home/k8s/.kube/config
     sudo chmod 600 /home/k8s/.kube/config
     export KUBECONFIG=/home/k8s/.kube/config
 
     # Also make kubectl accessible for root (optional)
     mkdir -p /root/.kube
-    cp -i /etc/kubernetes/admin.conf /root/.kube/config
+    cp -i -n /etc/kubernetes/admin.conf /root/.kube/config
     chown root:root /root/.kube/config
     chmod 600 /root/.kube/config
 
