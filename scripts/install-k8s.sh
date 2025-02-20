@@ -78,7 +78,7 @@ if [ "$ROLE" == "master" ]; then
 
   # Initialize Kubernetes master node with the provided token - INCREASED VERBOSITY
   echo "Initializing Kubernetes master node..."
-  kubeadm init --pod-network-cidr=10.69.0.0/16 --token $TOKEN --v=6 2>&1 | tee kubeadm-init.log # Redirect kubeadm init output to log file, VERBOSITY INCREASED
+  kubeadm init --pod-network-cidr=10.69.0.0/16 --token $TOKEN --v=6 2>&1 | tee kubeadm-init.log # Redirect kubeadm init output to log file, VERBOSITY INCREASED 
 
   # --- DIAGNOSTIC STEP: crictl pods AFTER kubeadm init, BEFORE readiness check ---
   echo "--- crictl pods AFTER kubeadm init, BEFORE readiness check ---"
