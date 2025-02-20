@@ -16,13 +16,13 @@ fi
 echo "Updating and upgrading system packages..."
 sudo apt update && sudo apt upgrade -y
 
-sleep(5)
+sleep 5
 
 # Install necessary dependencies
 echo "Installing dependencies..."
 sudo apt install -y apt-transport-https ca-certificates curl gnupg lsb-release
 
-sleep(5)
+sleep 5
 
 # Disable swap (important for Kubernetes)
 echo "Disabling swap..."
@@ -37,7 +37,7 @@ sudo containerd config default | sudo tee /etc/containerd/config.toml
 sudo systemctl restart containerd
 sudo systemctl enable containerd
 
-sleep(5)
+sleep 5
 
 # Add Kubernetes apt repository
 echo "Adding Kubernetes APT repository..."
@@ -45,7 +45,7 @@ curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.32/deb/Release.key | sudo gpg --
 echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.32/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
 sudo apt update
 
-sleep(5)
+sleep 5
 
 # Install Kubernetes components
 echo "Installing Kubernetes components..."
@@ -59,7 +59,7 @@ sudo sysctl net.ipv4.ip_forward=1
 echo "net.ipv4.ip_forward = 1" | sudo tee -a /etc/sysctl.conf
 sudo sysctl -p
 
-sleep(5)
+sleep 5
 
 # If running on the master node, perform master-specific setup
 if [ "$ROLE" == "master" ]; then
