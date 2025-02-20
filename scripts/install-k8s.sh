@@ -66,14 +66,6 @@ if [ "$ROLE" == "master" ]; then
   sudo rm -rf /var/lib/etcd # Remove etcd data directory
   # --- CLEANUP STEPS END ---
 
-  # Install Calico networking for the Kubernetes cluster
-  echo "Installing Calico networking for the cluster..."
-  kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.0/manifests/tigera-operator.yaml
-  wget https://raw.githubusercontent.com/projectcalico/calico/v3.26.0/manifests/custom-resources.yaml
-  sed -i "s#cidr: 192.168.0.0/16#cidr: 10.69.0.0/16#g" "custom-resources.yaml"
-  cat custom-resources.yaml
-  kubectl create -f custom-resources.yaml
-
   # --- DIAGNOSTIC STEP: crictl pods BEFORE kubeadm init ---
   echo "--- crictl pods BEFORE kubeadm init ---"
   sudo crictl pods --namespace kube-system
@@ -129,6 +121,14 @@ if [ "$ROLE" == "master" ]; then
     cp -i --update=none /etc/kubernetes/admin.conf /root/.kube/config
     chown root:root /root/.kube/config
     chmod 600 /root/.kube/config
+
+    # Install Calico networking for the Kubernetes cluster
+    echo "Installing Calico networking for the cluster..."
+    kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.0/manifests/tigera-operator.yaml
+    wget https://raw.githubusercontent.com/projectcalico/calico/v3.26.0/manifests/custom-resources.yaml
+    sed -i "s#cidr: 192.168.0.0/16#cidr: 10.69.0.0/16#g" "custom-resources.yaml"
+    cat custom-resources.yaml
+    kubectl create -f custom-resources.yaml
 
     if [ "$API_SERVER_STATUS" -eq 0 ]; then
       API_READY=true # Set readiness flag to true
