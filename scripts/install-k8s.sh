@@ -57,7 +57,7 @@ if [ "$ROLE" == "master" ]; then
 
   # --- CLEANUP STEPS ADDED HERE ---
   echo "--- Cleaning up previous Kubernetes installation ---"
-  sudo kubeadm reset -f 2>&1 | tee kubeadm-reset.log # Reset kubeadm and log output
+  kubeadm reset -f 2>&1 | tee kubeadm-reset.log # Reset kubeadm and log output
   if [ $? -ne 0 ]; then
     echo "kubeadm reset failed. Please check kubeadm-reset.log for errors. Exiting."
     cat kubeadm-reset.log || true
@@ -68,7 +68,7 @@ if [ "$ROLE" == "master" ]; then
 
   # Install Calico networking for the Kubernetes cluster
   echo "Installing Calico networking for the cluster..."
-  sudo -u k8s kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
+  kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
 
   # --- DIAGNOSTIC STEP: crictl pods BEFORE kubeadm init ---
   echo "--- crictl pods BEFORE kubeadm init ---"
@@ -76,7 +76,7 @@ if [ "$ROLE" == "master" ]; then
 
   # Initialize Kubernetes master node with the provided token - INCREASED VERBOSITY
   echo "Initializing Kubernetes master node..."
-  sudo kubeadm init --pod-network-cidr=10.69.0.0/16 --token $TOKEN --v=6 2>&1 | tee kubeadm-init.log # Redirect kubeadm init output to log file, VERBOSITY INCREASED
+  kubeadm init --pod-network-cidr=10.69.0.0/16 --token $TOKEN --v=6 2>&1 | tee kubeadm-init.log # Redirect kubeadm init output to log file, VERBOSITY INCREASED
 
   # --- DIAGNOSTIC STEP: crictl pods AFTER kubeadm init, BEFORE readiness check ---
   echo "--- crictl pods AFTER kubeadm init, BEFORE readiness check ---"
