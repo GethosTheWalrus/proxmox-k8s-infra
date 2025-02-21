@@ -58,6 +58,6 @@ kubectl apply -f metallb-config.yaml
 sleep 5
 
 echo "--- deploy a test web server ---"
-kubectl apply -f k8s-web-server.yaml 
+kubectl apply -f k8s-web-server.yaml
 
 echo "Metallb deployment script completed successfully!"
