@@ -20,9 +20,8 @@ helm repo update
 echo "--- Creating Metallb Namespace: ${METALLB_NAMESPACE} ---"
 kubectl create namespace --dry-run=client -o yaml "$METALLB_NAMESPACE" | kubectl apply -f -
 
-# --- Install/Upgrade Metallb Helm Chart ---
-echo "--- Installing/Upgrading Metallb Helm Chart in namespace: ${METALLB_NAMESPACE} ---"
-helm upgrade --install metallb metallb/metallb -n "$METALLB_NAMESPACE"
+# --- Install/Upgrade Metallb ---
+kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.9/config/manifests/metallb-native.yaml
 
 # --- Wait for webhook deployment to be ready ---
 echo "--- Waiting for metallb-webhook service to be ready ---"
@@ -50,8 +49,15 @@ if [ "$WEBHOOK_READY" == false ]; then
 fi
 echo "metallb-webhook deployment readiness confirmed."
 
+sleep 5
+
 # --- Apply IPAddressPool and L2Advertisement configurations ---
 echo "--- Applying IPAddressPool and L2Advertisement configurations ---"
 kubectl apply -f metallb-config.yaml
+
+sleep 5
+
+echo "--- deploy a test web server ---"
+kubectl apply -f k8s-web-server.yaml 
 
 echo "Metallb deployment script completed successfully!"
