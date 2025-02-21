@@ -118,7 +118,7 @@ deploy-nginx:
     - export KUBECONFIG=~/.kube/config
     - sh install-metallb.sh
   rules:
-    when: always
+  - when: always
   allow_failure: false
   dependencies:
     - init-master
