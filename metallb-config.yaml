@@ -1,14 +1,16 @@
+# pool
 apiVersion: metallb.io/v1beta1
 kind: IPAddressPool
 metadata:
-  name: first-pool
-  namespace: default
+  name: example-ip-pool
+  namespace: metallb-system
 spec:
   addresses:
   - 192.168.69.90-192.168.69.100
 ---
+# advertisement
 apiVersion: metallb.io/v1beta1
 kind: L2Advertisement
 metadata:
-  name: example
-  namespace: default
+  name: example-advertisement
+  namespace: metallb-system

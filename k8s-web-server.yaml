@@ -6,20 +6,21 @@ metadata:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: web-server
+  name: nginx-deployment
   namespace: web
 spec:
   selector:
     matchLabels:
-      app: web
+      app: nginx
+  replicas: 2 # tells deployment to run 2 pods matching the template
   template:
     metadata:
       labels:
-        app: web
+        app: nginx
     spec:
       containers:
-      - name: httpd
-        image: httpd:2.4.48-alpine3.14
+      - name: nginx
+        image: nginx:1.14.2
         ports:
         - containerPort: 80
 ---
