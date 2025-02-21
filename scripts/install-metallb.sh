@@ -14,9 +14,4 @@ export KUBECONFIG=~/.kube/config
 kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/main/manifests/namespace.yaml
 kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/main/manifests/metallb.yaml
 
-sleep 5
-
-echo "--- deploy a test web server ---"
-kubectl apply -f k8s-web-server.yaml
-
 echo "Metallb deployment script completed successfully!"
