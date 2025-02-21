@@ -16,12 +16,13 @@ echo "--- Helm Repository Setup ---"
 helm repo add metallb https://metallb.github.io/metallb
 helm repo update
 
-# --- Create Metallb Namespace --- 
-echo "--- Creating Metallb Namespace: ${METALLB_NAMESPACE} ---"
-kubectl create namespace --dry-run=client -o yaml "$METALLB_NAMESPACE" | kubectl apply -f -
+# # --- Create Metallb Namespace --- 
+# echo "--- Creating Metallb Namespace: ${METALLB_NAMESPACE} ---"
+# kubectl create namespace --dry-run=client -o yaml "$METALLB_NAMESPACE" | kubectl apply -f -
 
 # --- Install/Upgrade Metallb ---
-helm upgrade --install metallb metallb/metallb -f config.yaml -n metallb-system --debug
+helm repo add metallb https://metallb.github.io/metallb
+helm upgrade --install metallb metallb/metallb -f metallb-config.yaml
 
 # --- Wait for webhook deployment to be ready ---
 echo "--- Waiting for metallb-webhook service to be ready ---"
