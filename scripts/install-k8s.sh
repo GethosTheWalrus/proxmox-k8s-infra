@@ -165,7 +165,7 @@ if [ "$ROLE" == "master" ]; then
     # # --- END CLEANUP STEPS ---
     # sudo rm custom-resources*
 
-    kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.0/manifests/tigera-operator.yaml
+    kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.0/manifests/tigera-operator.yaml
     wget https://raw.githubusercontent.com/projectcalico/calico/v3.26.0/manifests/custom-resources.yaml
     sed -i "s#cidr: 192.168.0.0/16#cidr: 10.69.0.0/16#g" "custom-resources.yaml"
     cat custom-resources.yaml
