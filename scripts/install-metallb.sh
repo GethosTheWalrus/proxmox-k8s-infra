@@ -21,7 +21,7 @@ echo "--- Creating Metallb Namespace: ${METALLB_NAMESPACE} ---"
 kubectl create namespace --dry-run=client -o yaml "$METALLB_NAMESPACE" | kubectl apply -f -
 
 # --- Install/Upgrade Metallb ---
-kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.9/config/manifests/metallb-native.yaml
+helm install metallb metallb/metallb -f values.yaml -f metallb-config.yaml
 
 # --- Wait for webhook deployment to be ready ---
 echo "--- Waiting for metallb-webhook service to be ready ---"
@@ -51,9 +51,9 @@ echo "metallb-webhook deployment readiness confirmed."
 
 sleep 5
 
-# --- Apply IPAddressPool and L2Advertisement configurations ---
-echo "--- Applying IPAddressPool and L2Advertisement configurations ---"
-kubectl apply -f metallb-config.yaml
+# # --- Apply IPAddressPool and L2Advertisement configurations ---
+# echo "--- Applying IPAddressPool and L2Advertisement configurations ---"
+# kubectl apply -f metallb-config.yaml
 
 sleep 5
 
