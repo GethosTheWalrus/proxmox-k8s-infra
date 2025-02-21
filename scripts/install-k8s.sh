@@ -172,7 +172,7 @@ if [ "$ROLE" == "master" ]; then
     kubectl create -f custom-resources.yaml
 
     if [ "$API_SERVER_STATUS" -eq 0 ]; then
-      API_READY=true # Set readiness flag to true
+      API_READY=true
       break
     else
       echo "Kubernetes API server not yet ready. Waiting... (Retry: $RETRY_COUNT)"
