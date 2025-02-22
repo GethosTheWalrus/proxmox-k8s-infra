@@ -155,13 +155,13 @@ if [ "$ROLE" == "master" ]; then
     echo "Installing Calico networking for the cluster..."
 
     # --- CLEANUP STEPS BEFORE CALICO INSTALLATION ---
-    echo "--- Cleaning up previous Calico installation (if any) ---"
-    kubectl delete -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.0/manifests/tigera-operator.yaml --ignore-not-found=true
-    kubectl delete installation default -n tigera-operator --ignore-not-found=true
-    kubectl delete apiserver default -n tigera-operator --ignore-not-found=true
-    kubectl delete namespace tigera-operator --ignore-not-found=true
-    sleep 10
-    echo "--- Cleanup complete ---"
+    # echo "--- Cleaning up previous Calico installation (if any) ---"
+    # kubectl delete -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.0/manifests/tigera-operator.yaml --ignore-not-found=true
+    # kubectl delete installation default -n tigera-operator --ignore-not-found=true
+    # kubectl delete apiserver default -n tigera-operator --ignore-not-found=true
+    # kubectl delete namespace tigera-operator --ignore-not-found=true
+    # sleep 10
+    # echo "--- Cleanup complete ---"
     # --- END CLEANUP STEPS ---
 
     kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.2/manifests/tigera-operator.yaml
