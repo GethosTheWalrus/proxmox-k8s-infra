@@ -154,21 +154,19 @@ if [ "$ROLE" == "master" ]; then
     # Install Calico networking for the Kubernetes cluster
     echo "Installing Calico networking for the cluster..."
 
-    # # --- CLEANUP STEPS BEFORE CALICO INSTALLATION ---
-    # echo "--- Cleaning up previous Calico installation (if any) ---"
-    # kubectl delete -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.0/manifests/tigera-operator.yaml --ignore-not-found=true
-    # kubectl delete installation default -n tigera-operator --ignore-not-found=true # Delete Installation CR
-    # kubectl delete apiserver default -n tigera-operator --ignore-not-found=true   # Delete APIServer CR
-    # kubectl delete namespace tigera-operator --ignore-not-found=true # Delete tigera-operator namespace
-    # sleep 10 # Wait for cleanup to propagate (optional, but can help)
-    # echo "--- Cleanup complete ---"
-    # # --- END CLEANUP STEPS ---
-    # sudo rm custom-resources*
+    # --- CLEANUP STEPS BEFORE CALICO INSTALLATION ---
+    echo "--- Cleaning up previous Calico installation (if any) ---"
+    kubectl delete -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.0/manifests/tigera-operator.yaml --ignore-not-found=true
+    kubectl delete installation default -n tigera-operator --ignore-not-found=true
+    kubectl delete apiserver default -n tigera-operator --ignore-not-found=true
+    kubectl delete namespace tigera-operator --ignore-not-found=true
+    sleep 10
+    echo "--- Cleanup complete ---"
+    # --- END CLEANUP STEPS ---
 
-    kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.0/manifests/tigera-operator.yaml
-    wget https://raw.githubusercontent.com/projectcalico/calico/v3.26.0/manifests/custom-resources.yaml
+    kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.2/manifests/tigera-operator.yaml
+    curl https://raw.githubusercontent.com/projectcalico/calico/v3.29.2/manifests/custom-resources.yaml -O
     sed -i "s#cidr: 192.168.0.0/16#cidr: 10.69.0.0/16#g" "custom-resources.yaml"
-    cat custom-resources.yaml
     kubectl create -f custom-resources.yaml
 
     if [ "$API_SERVER_STATUS" -eq 0 ]; then
