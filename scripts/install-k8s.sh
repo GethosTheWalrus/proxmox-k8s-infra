@@ -101,7 +101,7 @@ if [ "$ROLE" == "master" ]; then
 
   # Initialize Kubernetes master node with the provided token - INCREASED VERBOSITY
   echo "Initializing Kubernetes master node..."
-  kubeadm init --pod-network-cidr=10.69.0.0/16 --token $TOKEN --v=6 2>&1 | tee kubeadm-init.log # Redirect kubeadm init output to log file, VERBOSITY INCREASED 
+  kubeadm init --pod-network-cidr=10.244.0.0/16 --token $TOKEN --v=6 2>&1 | tee kubeadm-init.log
 
   # --- DIAGNOSTIC STEP: crictl pods AFTER kubeadm init, BEFORE readiness check ---
   echo "--- crictl pods AFTER kubeadm init, BEFORE readiness check ---"
@@ -152,22 +152,24 @@ if [ "$ROLE" == "master" ]; then
     chmod 600 /root/.kube/config
 
     # Install Calico networking for the Kubernetes cluster
-    echo "Installing Calico networking for the cluster..."
+    echo "Installing Flannel networking for the cluster..."
 
-    # --- CLEANUP STEPS BEFORE CALICO INSTALLATION ---
-    echo "--- Cleaning up previous Calico installation (if any) ---"
-    kubectl delete -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.0/manifests/tigera-operator.yaml --ignore-not-found=true
-    kubectl delete installation default -n tigera-operator --ignore-not-found=true
-    kubectl delete apiserver default -n tigera-operator --ignore-not-found=true
-    kubectl delete namespace tigera-operator --ignore-not-found=true
-    sleep 10
-    echo "--- Cleanup complete ---"
-    # --- END CLEANUP STEPS ---
+    kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
 
-    kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.2/manifests/tigera-operator.yaml
-    curl https://raw.githubusercontent.com/projectcalico/calico/v3.29.2/manifests/custom-resources.yaml -O
-    sed -i "s#cidr: 192.168.0.0/16#cidr: 10.69.0.0/16#g" "custom-resources.yaml"
-    kubectl create -f custom-resources.yaml
+    # # --- CLEANUP STEPS BEFORE CALICO INSTALLATION ---
+    # echo "--- Cleaning up previous Calico installation (if any) ---"
+    # kubectl delete -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.0/manifests/tigera-operator.yaml --ignore-not-found=true
+    # kubectl delete installation default -n tigera-operator --ignore-not-found=true
+    # kubectl delete apiserver default -n tigera-operator --ignore-not-found=true
+    # kubectl delete namespace tigera-operator --ignore-not-found=true
+    # sleep 10
+    # echo "--- Cleanup complete ---"
+    # # --- END CLEANUP STEPS ---
+
+    # kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.2/manifests/tigera-operator.yaml
+    # curl https://raw.githubusercontent.com/projectcalico/calico/v3.29.2/manifests/custom-resources.yaml -O
+    # sed -i "s#cidr: 192.168.0.0/16#cidr: 10.69.0.0/16#g" "custom-resources.yaml"
+    # kubectl create -f custom-resources.yaml
 
     if [ "$API_SERVER_STATUS" -eq 0 ]; then
       API_READY=true

@@ -116,7 +116,8 @@ deploy-nginx:
     - mkdir ~/.kube
     - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
     - export KUBECONFIG=~/.kube/config
-    - kubectl apply -f k8s-web-server.yaml
+    - kubectl create deploy nginx --image nginx
+    - kubectl expose deploy nginx --port 80 --type LoadBalancer
   rules:
   - when: always
   allow_failure: false
