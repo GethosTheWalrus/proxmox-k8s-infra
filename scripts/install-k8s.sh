@@ -56,7 +56,9 @@ sudo systemctl enable --now kubelet
 # Enable IP forwarding for Kubernetes
 echo "Enabling IP forwarding..."
 sudo sysctl net.ipv4.ip_forward=1
+sudo sysctl net.bridge.bridge-nf-call-iptables = 1
 echo "net.ipv4.ip_forward = 1" | sudo tee -a /etc/sysctl.conf
+echo "net.bridge.bridge-nf-call-iptables = 1" | sudo tee -a /etc/sysctl.conf
 sudo sysctl -p
 
 sleep 5
@@ -155,6 +157,7 @@ if [ "$ROLE" == "master" ]; then
     echo "Installing Flannel networking for the cluster..."
 
     kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+    kubectl create -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel-rbac.yml
 
     # # --- CLEANUP STEPS BEFORE CALICO INSTALLATION ---
     # echo "--- Cleaning up previous Calico installation (if any) ---"
