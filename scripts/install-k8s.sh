@@ -178,7 +178,7 @@ if [ "$ROLE" == "master" ]; then
       break
     else
       echo "Kubernetes API server not yet ready. Waiting... (Retry: $RETRY_COUNT)"
-      echo "kubectl cluster-info output (Retry: $RETRY_COUNT):" # Print captured output if not ready
+      echo "kubectl cluster-info output (Retry: $RETRY_COUNT):"
       echo "$KUBECTL_OUTPUT"
     fi
     sleep 5
