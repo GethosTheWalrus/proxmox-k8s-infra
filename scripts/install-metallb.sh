@@ -24,19 +24,17 @@ kubectl wait --namespace $METALLB_NAMESPACE \
 
 echo "Waiting for MetalLB webhook service to become available..."
 
-# Wait for the webhook service to be ready
-WEBHOOK_URL="https://metallb-webhook-service.$METALLB_NAMESPACE.svc:443/validate-metallb-io-v1beta1-ipaddresspool"
-
+# Wait for the MetalLB webhook service to be created and available
 for i in {1..30}; do
-  if curl -k --max-time 5 "$WEBHOOK_URL"; then
-    echo "MetalLB webhook is ready!"
+  if kubectl get service metallb-webhook-service -n "$METALLB_NAMESPACE" &> /dev/null; then
+    echo "MetalLB webhook service is available!"
     break
   fi
-  echo "Retrying webhook check ($i/30)..."
+  echo "Waiting for MetalLB webhook service... (Attempt $i/30)"
   sleep 10
 done
 
-# Apply MetalLB configuration once ready
+# Apply MetalLB configuration once the webhook service is ready
 kubectl apply -f metallb-config.yaml
 
 echo "Metallb deployment script completed successfully!"

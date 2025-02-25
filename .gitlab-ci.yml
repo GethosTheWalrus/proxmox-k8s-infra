@@ -124,7 +124,7 @@ deploy-nginx:
   rules:
   - when: always
   allow_failure: false
-  dependencies:
+  needs:
     - init-master
     - init-workers
     - deploy-metallb
