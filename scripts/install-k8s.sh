@@ -55,14 +55,14 @@ sudo systemctl enable --now kubelet
 
 # Enable IP forwarding for Kubernetes
 echo "Enabling IP forwarding..."
-sudo sysctl -w net.ipv4.ip_forward=1
-sudo sysctl -w net.bridge.bridge-nf-call-iptables=1
+sudo sysctl net.ipv4.ip_forward=1
+sudo sysctl net.bridge.bridge-nf-call-iptables = 1
 echo "net.ipv4.ip_forward = 1" | sudo tee -a /etc/sysctl.conf
 echo "net.bridge.bridge-nf-call-iptables = 1" | sudo tee -a /etc/sysctl.conf
 sudo sysctl -p
 
 modprobe br_netfilter
-sysctl -w net.bridge.bridge-nf-call-iptables=1
+sysctl -w net.bridge.bridge-nf-call-iptables = 1
 
 sleep 5
 
@@ -115,34 +115,68 @@ if [ "$ROLE" == "master" ]; then
   echo "--- crictl pods AFTER kubeadm init, BEFORE readiness check ---"
   sudo crictl pods --namespace kube-system
 
+  # --- PAUSE AFTER kubeadm init ---
   echo "--- Pausing for 15 seconds after kubeadm init to allow pod logging ---"
   sleep 15
 
+  # --- DIAGNOSTIC: Dump admin.conf content AFTER kubeadm init, BEFORE readiness check ---
+  echo "--- Dumping /etc/kubernetes/admin.conf content AFTER kubeadm init, BEFORE readiness check ---"
+  sudo cat /etc/kubernetes/admin.conf || true
+
+  # Check if kubeadm init was successful
   if [ $? -ne 0 ]; then
     echo "kubeadm init failed. Exiting."
     exit 1
   fi
 
-  echo "Waiting for Kubernetes API to be ready..."
-  until kubectl cluster-info; do
-    echo "Waiting for API server..."
+  # Wait for the Kubernetes API to be up and running
+  echo "Waiting for Kubernetes API to be ready... (Readiness Check Block Started)"
+
+  API_READY=false
+  RETRY_COUNT=0
+  while true; do
+    RETRY_COUNT=$((RETRY_COUNT + 1))
+    echo "kubectl cluster-info attempt - Retry: $RETRY_COUNT - Time: $(date +%Y-%m-%d_%H:%M:%S) - Explicit Kubeconfig"
+
+    echo "kubectl cluster-info attempt - Status Code: $API_SERVER_STATUS - Retry: $RETRY_COUNT - Time: $(date +%Y-%m-%d_%H:%M:%S)"
+
+    # Get kubectl cluster-info AND status INSIDE the loop
+    KUBECTL_OUTPUT=$(kubectl cluster-info 2>&1)
+    API_SERVER_STATUS=$?
+
+    # Set up kubeconfig for the non-root user
+    echo "Setting up kubeconfig for the non-root user..."
+    USER_HOME=$(eval echo ~${SUDO_USER})
+    mkdir -p /home/k8s/.kube
+    sudo cp -i --update=none /etc/kubernetes/admin.conf /home/k8s/.kube/config
+    sudo chown k8s:k8s /home/k8s/.kube/config
+    sudo chmod 600 /home/k8s/.kube/config
+    export KUBECONFIG=/home/k8s/.kube/config
+
+    # Also make kubectl accessible for root (optional)
+    mkdir -p /root/.kube
+    cp -i --update=none /etc/kubernetes/admin.conf /root/.kube/config
+    chown root:root /root/.kube/config
+    chmod 600 /root/.kube/config
+
+    # Install Flannel networking for the Kubernetes cluster
+    echo "Installing Flannel networking for the cluster..."
+
+    kubectl apply -f https://github.com/coreos/flannel/raw/master/Documentation/kube-flannel.yml
+
+    if [ "$API_SERVER_STATUS" -eq 0 ]; then
+      API_READY=true
+      break
+    else
+      echo "Kubernetes API server not yet ready. Waiting... (Retry: $RETRY_COUNT)"
+      echo "kubectl cluster-info output (Retry: $RETRY_COUNT):"
+      echo "$KUBECTL_OUTPUT"
+    fi
     sleep 5
   done
+  echo "Kubernetes API server is ready!"
 
-  echo "Setting up kubeconfig for users..."
-  for user in root k8s; do
-    USER_HOME=$(eval echo ~$user)
-    mkdir -p $USER_HOME/.kube
-    sudo cp -i /etc/kubernetes/admin.conf $USER_HOME/.kube/config
-    sudo chown $user:$user $USER_HOME/.kube/config
-    sudo chmod 600 $USER_HOME/.kube/config
-  done
-
-  echo "Installing Flannel networking for the cluster..."
-  if ! kubectl get daemonset -n kube-system | grep -q flannel; then
-    kubectl apply -f https://github.com/coreos/flannel/raw/master/Documentation/kube-flannel.yml
-  fi
-
+  # Generate the hash for the CA certificate
   echo "Generating the hash for the CA certificate..."
   openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | \
   openssl rsa -pubin -outform DER 2>/dev/null | \
@@ -153,6 +187,7 @@ if [ "$ROLE" == "master" ]; then
 else
   echo "Configuring worker node..."
 
+  # Ensure that the correct arguments are passed for worker node setup
   if [ $# -ne 3 ]; then
     echo "ERROR: Missing arguments for worker setup. Usage: $0 <master-ip> <token> <hash>"
     exit 1
@@ -162,6 +197,7 @@ else
   TOKEN=$2
   HASH=$3
 
+  # Join the worker node to the Kubernetes cluster
   echo "Joining the worker node to the cluster..."
   sudo kubeadm join ${MASTER_IP}:6443 --token ${TOKEN} \
       --discovery-token-ca-cert-hash sha256:${HASH}
