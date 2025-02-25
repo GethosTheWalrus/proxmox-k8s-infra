@@ -66,6 +66,7 @@ sleep 5
 echo "y" | sudo ufw enable 
 # system
 sudo ufw allow 22
+sudo ufw allow 179
 # http
 sudo ufw allow 80
 sudo ufw allow 443
@@ -156,7 +157,7 @@ if [ "$ROLE" == "master" ]; then
     # Install Calico networking for the Kubernetes cluster
     echo "Installing Calico networking for the cluster..."
 
-    # kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+    kubectl apply -f https://github.com/coreos/flannel/raw/master/Documentation/kube-flannel.yml
 
     # --- CLEANUP STEPS BEFORE CALICO INSTALLATION ---
     # echo "--- Cleaning up previous Calico installation (if any) ---"
@@ -168,10 +169,10 @@ if [ "$ROLE" == "master" ]; then
     # echo "--- Cleanup complete ---"
     # # --- END CLEANUP STEPS ---
 
-    kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.2/manifests/tigera-operator.yaml
-    curl https://raw.githubusercontent.com/projectcalico/calico/v3.29.2/manifests/custom-resources.yaml -O
-    sed -i 's/192.168.0.0\/16/10.244.0.0\/16/g' custom-resources.yaml
-    kubectl create -f custom-resources.yaml
+    # kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.2/manifests/tigera-operator.yaml
+    # curl https://raw.githubusercontent.com/projectcalico/calico/v3.29.2/manifests/custom-resources.yaml -O
+    # sed -i 's/192.168.0.0\/16/10.244.0.0\/16/g' custom-resources.yaml
+    # kubectl create -f custom-resources.yaml
 
     if [ "$API_SERVER_STATUS" -eq 0 ]; then
       API_READY=true
