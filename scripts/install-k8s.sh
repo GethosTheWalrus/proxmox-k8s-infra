@@ -79,6 +79,8 @@ sudo ufw allow 10259
 sudo ufw allow 10256
 sudo ufw allow 10257
 sudo ufw allow 30000:32767/tcp
+# flannel
+sudo ufw allow 8742
 # metallb
 sudo ufw allow 7946
 sudo ufw allow 7472
