@@ -93,6 +93,8 @@ deploy-metallb:
   before_script:
     - apk --no-cache add openssh-client kubectl helm
   script:
+    - mkdir ~/.kube
+    - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
     - chmod +x scripts/install-metallb.sh
     - scripts/install-metallb.sh
   rules:
