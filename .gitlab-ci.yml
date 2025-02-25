@@ -89,7 +89,7 @@ deploy-metallb:
   variables:
     K8S1: 192.168.69.80
     METALLB_NAMESPACE: metallb-system
-    IP_RANGE: 192.168.69.90-192.168.69.100
+    IP_ADDRESS_RANGE: 192.168.69.95-192.168.69.100
   before_script:
     - apk --no-cache add openssh-client kubectl helm
   script:

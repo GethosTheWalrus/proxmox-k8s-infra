@@ -35,6 +35,7 @@ for i in {1..30}; do
 done
 
 # Apply MetalLB configuration once the webhook service is ready
+sed -i "s|192.168.69.90-192.168.69.100|$IP_ADDRESS_RANGE|" metallb-config.yaml
 kubectl apply -f metallb-config.yaml
 
 echo "Metallb deployment script completed successfully!"
