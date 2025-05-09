@@ -45,7 +45,7 @@ init-master:
   - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "sudo ROLE=$ROLE TOKEN=$TOKEN bash -s" < scripts/install-k8s.sh
   - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/hash $CI_PROJECT_DIR/hash
   rules:
-  - if: $CI_COMMIT_TITLE =~ /-init$/
+  - if: $CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/
     when: always
   allow_failure: false
   needs:
@@ -74,7 +74,7 @@ init-workers:
     - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S2" "sudo ROLE=$ROLE bash -s" < $CI_PROJECT_DIR/scripts/install-k8s.sh $K8S1 $JOINTOKEN $(cat $CI_PROJECT_DIR/hash)
     - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S3" "sudo ROLE=$ROLE bash -s" < $CI_PROJECT_DIR/scripts/install-k8s.sh $K8S1 $JOINTOKEN $(cat $CI_PROJECT_DIR/hash)
   rules:
-  - if: $CI_COMMIT_TITLE =~ /-init$/
+  - if: $CI_COMMIT_BRANCH == "main" &&$CI_COMMIT_TITLE =~ /-init$/
     when: always
     allow_failure: false
   needs:
