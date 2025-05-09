@@ -2,7 +2,7 @@ resource "proxmox_virtual_environment_file" "ubuntu_cloud_image" {
   content_type = "iso"
   datastore_id = var.os_image_datastore_id
   node_name    = var.pve_node
-  source_url   = var.os_image
+  url   = var.os_image
   overwrite    = false
 }
 
