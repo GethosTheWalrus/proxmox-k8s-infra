@@ -35,19 +35,4 @@ module "k8s_infra" {
   os_user              = var.os_user
   os_password          = var.os_password
   os_image_datastore_id = var.os_image_datastore_id
-}
-
-module "temporal" {
-  source = "./temporal"
-  
-  temporal_namespace         = var.temporal_namespace
-  temporal_server_replicas   = var.temporal_server_replicas
-  temporal_server_storage_size = var.temporal_server_storage_size
-  cassandra_storage_size     = var.cassandra_storage_size
-  load_balancer_ip          = var.load_balancer_ip
-  cassandra_replicas        = var.cassandra_replicas
-  cassandra_storage_class   = var.cassandra_storage_class
-  temporal_storage_class    = var.temporal_storage_class
-  temporal_ui_enabled       = var.temporal_ui_enabled
-  temporal_ui_replicas      = var.temporal_ui_replicas
 } 
