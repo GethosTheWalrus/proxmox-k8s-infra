@@ -1,21 +1,25 @@
 terraform {
   required_providers {
     proxmox = {
-      source = "bpg/proxmox"
-      version = "0.71.0"
+      source = "telmate/proxmox"
+      version = "2.9.14"
     }
   }
-  backend "http" {}
 }
 
-provider "proxmox" {
-  endpoint = "https://proxmox1.home:8006/"
+module "k8s_infra" {
+  source = "./k8s-infra"
+  
+  # Pass through any variables needed from the root module
   username = var.username
   password = var.password
-  insecure = true
-
-  ssh {
-    agent = true
-    username = "root"
-  }
+  # Add other variables as needed
 }
+
+module "temporal" {
+  source = "./temporal"
+  
+  # Pass through any variables needed from the root module
+  load_balancer_ip = "192.168.69.83"  # Using the first IP from your MetalLB pool
+  depends_on = [module.k8s_infra]
+} 
