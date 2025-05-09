@@ -75,4 +75,11 @@ resource "helm_release" "temporal" {
     name  = "cassandra.persistence.storageClass"
     value = var.cassandra_storage_class
   }
+
+  depends_on = [helm_repository.temporal]
+}
+
+resource "helm_repository" "temporal" {
+  name = "temporal"
+  url  = "https://temporalio.github.io/helm-charts"
 } 

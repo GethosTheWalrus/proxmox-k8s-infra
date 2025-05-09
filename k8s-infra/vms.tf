@@ -134,6 +134,7 @@ resource "proxmox_virtual_environment_download_file" "ubuntu_cloud_image" {
   datastore_id   = var.os_image_datastore_id
   node_name      = var.pve_node
   url            = var.os_image
+  overwrite      = false  # Don't overwrite existing files
 }
 
 output "vm_private_key" {
