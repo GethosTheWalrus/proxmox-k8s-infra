@@ -40,7 +40,7 @@ init-master:
     ROLE: master
     TOKEN: abcdef.0123456789abcdef
   before_script:
-    - apt update && apt install -y openssh-client netcat
+    - apt update && apt install -y openssh-client
   script:
     - echo "Waiting for SSH to be available on $K8S1..."
     - timeout 300 bash -c 'until nc -z $K8S1 22; do sleep 5; done'
