@@ -1,11 +1,3 @@
-resource "proxmox_virtual_environment_download_file" "ubuntu_cloud_image" {
-  content_type   = "iso"
-  datastore_id   = var.os_image_datastore_id
-  node_name      = var.pve_node
-  url            = var.os_image
-  overwrite      = true
-}
-
 resource "proxmox_virtual_environment_vm" "k8s1" {
   name            = "k8s1"
   node_name       = var.pve_node
@@ -131,9 +123,17 @@ resource "proxmox_virtual_environment_vm" "k8s3" {
   }
 }
 
+
 resource "tls_private_key" "vm_key" {
   algorithm = "RSA"
   rsa_bits  = 2048
+}
+
+resource "proxmox_virtual_environment_download_file" "ubuntu_cloud_image" {
+  content_type   = "iso"
+  datastore_id   = var.os_image_datastore_id
+  node_name      = var.pve_node
+  url            = var.os_image
 }
 
 output "vm_private_key" {
