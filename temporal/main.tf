@@ -17,12 +17,13 @@ resource "helm_release" "temporal" {
   name       = "temporal"
   repository = "https://temporalio.github.io/helm-charts"
   chart      = "temporal"
+  version    = "0.20.0"
   namespace  = var.temporal_namespace
   create_namespace = true
 
   set {
     name  = "server.replicaCount"
-    value = "3"
+    value = var.temporal_server_replicas
   }
 
   set {
@@ -42,11 +43,36 @@ resource "helm_release" "temporal" {
 
   set {
     name  = "cassandra.replicaCount"
-    value = "3"
+    value = var.cassandra_replicas
   }
 
   set {
     name  = "ui.enabled"
-    value = "true"
+    value = var.temporal_ui_enabled
+  }
+
+  set {
+    name  = "ui.replicaCount"
+    value = var.temporal_ui_replicas
+  }
+
+  set {
+    name  = "server.persistence.size"
+    value = var.temporal_server_storage_size
+  }
+
+  set {
+    name  = "server.persistence.storageClass"
+    value = var.temporal_storage_class
+  }
+
+  set {
+    name  = "cassandra.persistence.size"
+    value = var.cassandra_storage_size
+  }
+
+  set {
+    name  = "cassandra.persistence.storageClass"
+    value = var.cassandra_storage_class
   }
 } 

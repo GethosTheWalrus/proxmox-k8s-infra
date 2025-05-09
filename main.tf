@@ -5,6 +5,19 @@ terraform {
       version = "2.9.14"
     }
   }
+  backend "http" {}
+}
+
+provider "proxmox" {
+  endpoint = "https://proxmox1.home:8006/"
+  username = var.username
+  password = var.password
+  insecure = true
+
+  ssh {
+    agent = true
+    username = "root"
+  }
 }
 
 module "k8s_infra" {
