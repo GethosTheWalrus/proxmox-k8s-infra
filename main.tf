@@ -10,15 +10,31 @@ terraform {
 module "k8s_infra" {
   source = "./k8s-infra"
   
-  # Pass through any variables needed from the root module
-  username = var.username
-  password = var.password
-  # Add other variables as needed
+  username              = var.username
+  password              = var.password
+  cpu_cores            = var.cpu_cores
+  cpu_type             = var.cpu_type
+  dedicated_memory     = var.dedicated_memory
+  disk_size            = var.disk_size
+  datastore_id         = var.datastore_id
+  os_image             = var.os_image
+  pve_node             = var.pve_node
+  os_user              = var.os_user
+  os_password          = var.os_password
+  os_image_datastore_id = var.os_image_datastore_id
 }
 
 module "temporal" {
   source = "./temporal"
   
-  # Pass through any variables needed from the root module
-  load_balancer_ip = "192.168.69.98"  # Using the first IP from your MetalLB pool
+  temporal_namespace         = var.temporal_namespace
+  temporal_server_replicas   = var.temporal_server_replicas
+  temporal_server_storage_size = var.temporal_server_storage_size
+  cassandra_storage_size     = var.cassandra_storage_size
+  load_balancer_ip          = var.load_balancer_ip
+  cassandra_replicas        = var.cassandra_replicas
+  cassandra_storage_class   = var.cassandra_storage_class
+  temporal_storage_class    = var.temporal_storage_class
+  temporal_ui_enabled       = var.temporal_ui_enabled
+  temporal_ui_replicas      = var.temporal_ui_replicas
 } 
