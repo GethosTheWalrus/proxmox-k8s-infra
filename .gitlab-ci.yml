@@ -174,5 +174,6 @@ destroy-cluster:
     - terraform destroy --auto-approve=true
   allow_failure: true
   rules:
+  - if: '$CI_COMMIT_BRANCH == "main"'
   - when: manual
   needs: []
