@@ -13,7 +13,15 @@ provider "helm" {
   }
 }
 
+resource "null_resource" "add_helm_repo" {
+  provisioner "local-exec" {
+    command = "helm repo add temporal https://temporalio.github.io/helm-charts && helm repo update"
+  }
+}
+
 resource "helm_release" "temporal" {
+  depends_on = [null_resource.add_helm_repo]
+  
   name       = "temporal"
   repository = "https://temporalio.github.io/helm-charts"
   chart      = "temporal"

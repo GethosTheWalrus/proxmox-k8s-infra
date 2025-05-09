@@ -2,9 +2,8 @@ resource "proxmox_virtual_environment_file" "ubuntu_cloud_image" {
   content_type = "iso"
   datastore_id = var.os_image_datastore_id
   node_name    = var.pve_node
-  source_file {
-    path = "/var/lib/vz/template/iso/oracular-server-cloudimg-amd64.img"
-  }
+  source_url   = var.os_image
+  overwrite    = false
 }
 
 resource "proxmox_virtual_environment_vm" "k8s1" {
