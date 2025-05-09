@@ -22,6 +22,14 @@ resource "proxmox_virtual_environment_vm" "k8s1" {
         gateway = "192.168.69.1"
       }
     }
+    user_data = <<-EOT
+      #cloud-config
+      ssh_pwauth: true
+      ssh:
+        permit_root_login: false
+        authorized_keys:
+          - ${trimspace(tls_private_key.vm_key.public_key_openssh)}
+    EOT
   }
 
   network_device {
@@ -64,6 +72,14 @@ resource "proxmox_virtual_environment_vm" "k8s2" {
         gateway = "192.168.69.1"
       }
     }
+    user_data = <<-EOT
+      #cloud-config
+      ssh_pwauth: true
+      ssh:
+        permit_root_login: false
+        authorized_keys:
+          - ${trimspace(tls_private_key.vm_key.public_key_openssh)}
+    EOT
   }
 
   network_device {
@@ -106,6 +122,14 @@ resource "proxmox_virtual_environment_vm" "k8s3" {
         gateway = "192.168.69.1"
       }
     }
+    user_data = <<-EOT
+      #cloud-config
+      ssh_pwauth: true
+      ssh:
+        permit_root_login: false
+        authorized_keys:
+          - ${trimspace(tls_private_key.vm_key.public_key_openssh)}
+    EOT
   }
 
   network_device {

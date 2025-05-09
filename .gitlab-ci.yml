@@ -40,10 +40,16 @@ init-master:
     ROLE: master
     TOKEN: abcdef.0123456789abcdef
   before_script:
-    - apt update && apt install -y openssh-client
+    - apt update && apt install -y openssh-client netcat
   script:
-  - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "sudo ROLE=$ROLE TOKEN=$TOKEN bash -s" < scripts/install-k8s.sh
-  - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/hash $CI_PROJECT_DIR/hash
+    - echo "Waiting for SSH to be available on $K8S1..."
+    - timeout 300 bash -c 'until nc -z $K8S1 22; do sleep 5; done'
+    - echo "SSH is available, proceeding with installation..."
+    - echo "Testing SSH connection with verbose output..."
+    - ssh -v -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "echo 'SSH connection successful'"
+    - echo "Proceeding with main installation..."
+    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "sudo ROLE=$ROLE TOKEN=$TOKEN bash -s" < scripts/install-k8s.sh
+    - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/hash $CI_PROJECT_DIR/hash
   rules:
     - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
       when: always
