@@ -24,7 +24,7 @@ deploy-cluster:
     - chmod 600 key
     - cat key
   rules:
-  - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
   artifacts:
     paths:
       - scripts
@@ -45,8 +45,8 @@ init-master:
   - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "sudo ROLE=$ROLE TOKEN=$TOKEN bash -s" < scripts/install-k8s.sh
   - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/hash $CI_PROJECT_DIR/hash
   rules:
-  - if: $CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/
-    when: always
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
+      when: always
   allow_failure: false
   needs:
     - deploy-cluster
@@ -74,8 +74,8 @@ init-workers:
     - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S2" "sudo ROLE=$ROLE bash -s" < $CI_PROJECT_DIR/scripts/install-k8s.sh $K8S1 $JOINTOKEN $(cat $CI_PROJECT_DIR/hash)
     - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S3" "sudo ROLE=$ROLE bash -s" < $CI_PROJECT_DIR/scripts/install-k8s.sh $K8S1 $JOINTOKEN $(cat $CI_PROJECT_DIR/hash)
   rules:
-  - if: $CI_COMMIT_BRANCH == "main" &&$CI_COMMIT_TITLE =~ /-init$/
-    when: always
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
+      when: always
     allow_failure: false
   needs:
     - deploy-cluster
@@ -101,7 +101,8 @@ deploy-metallb:
   rules:
     - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
       when: always
-    - when: manual
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
   dependencies:
     - init-master
     - init-workers
@@ -122,8 +123,9 @@ deploy-nginx:
     - kubectl create deploy nginx --image nginx
     - kubectl expose deploy nginx --port 80 --type LoadBalancer
   rules:
-  - if: '$CI_COMMIT_BRANCH == "main"'
-  - when: always
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: always
+    - when: manual
   allow_failure: false
   needs:
     - init-master
@@ -174,6 +176,6 @@ destroy-cluster:
     - terraform destroy --auto-approve=true
   allow_failure: true
   rules:
-  - if: '$CI_COMMIT_BRANCH == "main"'
-  - when: manual
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
   needs: []
