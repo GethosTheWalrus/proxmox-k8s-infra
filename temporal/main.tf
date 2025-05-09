@@ -21,6 +21,9 @@ resource "helm_release" "temporal" {
   namespace  = var.temporal_namespace
   create_namespace = true
 
+  repository_username = ""  # No authentication required
+  repository_password = ""  # No authentication required
+
   set {
     name  = "server.replicaCount"
     value = var.temporal_server_replicas
