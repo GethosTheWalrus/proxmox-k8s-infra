@@ -76,7 +76,7 @@ init-workers:
   rules:
     - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
       when: always
-    allow_failure: false
+  allow_failure: false
   needs:
     - deploy-cluster
     - init-master
