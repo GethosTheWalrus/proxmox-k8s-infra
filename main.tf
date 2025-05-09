@@ -20,6 +20,5 @@ module "temporal" {
   source = "./temporal"
   
   # Pass through any variables needed from the root module
-  load_balancer_ip = "192.168.69.83"  # Using the first IP from your MetalLB pool
-  depends_on = [module.k8s_infra]
+  load_balancer_ip = "192.168.69.98"  # Using the first IP from your MetalLB pool
 } 
