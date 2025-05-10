@@ -146,12 +146,16 @@ deploy-openebs:
     - chmod +x scripts/install-openebs.sh
     - scripts/install-openebs.sh
     - echo "Waiting for OpenEBS pods to be ready..."
-    - kubectl wait --for=condition=ready pod -l app=openebs-localpv-provisioner -n openebs --timeout=300s
-    - kubectl wait --for=condition=ready pod -l app=openebs-ndm -n openebs --timeout=300s
+    - echo "Checking OpenEBS pods..."
+    - kubectl get pods -n openebs
+    - echo "Waiting for OpenEBS pods..."
+    - kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=openebs -n openebs --timeout=300s
     - echo "Applying storage class..."
     - kubectl apply -f storage-class.yaml
     - echo "Verifying storage class..."
     - kubectl get sc
+    - echo "Verifying OpenEBS pods are running..."
+    - kubectl get pods -n openebs
   rules:
     - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
       when: always
