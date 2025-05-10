@@ -150,8 +150,10 @@ deploy-temporal:
         when: always
       - if: '$CI_COMMIT_BRANCH == "main"'
         when: manual
-    dependencies:
-      - deploy-metallb
+    needs:
+    - init-master
+    - init-workers
+    - deploy-metallb
 
 
 destroy-cluster:
