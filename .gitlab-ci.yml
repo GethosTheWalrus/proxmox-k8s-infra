@@ -17,7 +17,7 @@ deploy-cluster:
     - export TF_ADDRESS="http://git.home/api/v4/projects/$PROJECT_ID/terraform/state/proxmox-k8s-infra"
     - terraform init -backend-config=address=${TF_ADDRESS} -backend-config=lock_address=${TF_ADDRESS}/lock -backend-config=unlock_address=${TF_ADDRESS}/lock -backend-config=username=${TF_USERNAME} -backend-config=password=${TF_PASSWORD} -backend-config=lock_method=POST -backend-config=unlock_method=DELETE -backend-config=retry_wait_min=5
   script:
-    - terraform apply --auto-approve=true
+    - terraform apply -parallelism=2 --auto-approve=true
     - terraform output vm_private_key > key
     - terraform output vm_public_key > key.pub
     - sed -i '1d;$d' key
