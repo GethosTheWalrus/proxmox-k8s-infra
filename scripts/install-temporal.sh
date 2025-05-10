@@ -33,8 +33,55 @@ helm upgrade --install temporal temporal/temporal \
 
 # Wait for schema setup to complete
 echo "Waiting for schema setup to complete..."
-kubectl wait --for=condition=complete job/temporal-schema-1 -n temporal --timeout=600s
+kubectl wait --for=condition=complete job/temporal-schema-1 -n temporal --timeout=600s || true
 
 # Wait for all pods to be ready
 echo "Waiting for all pods to be ready..."
-kubectl wait --for=condition=ready pod -l app.kubernetes.io/instance=temporal -n temporal --timeout=600s 
+
+# Function to check if all pods are ready
+check_pods_ready() {
+  # Get all pods in the namespace
+  local pods=$(kubectl get pods -n temporal -o jsonpath='{.items[*].metadata.name}')
+  local all_ready=true
+
+  for pod in $pods; do
+    # Skip completed jobs
+    if [[ $pod == temporal-schema* ]]; then
+      continue
+    fi
+    
+    # Check if pod is ready
+    local ready=$(kubectl get pod $pod -n temporal -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}')
+    if [[ $ready != "True" ]]; then
+      all_ready=false
+      break
+    fi
+  done
+
+  echo $all_ready
+}
+
+# Wait for pods to be ready with timeout
+timeout=600
+interval=10
+elapsed=0
+
+while [ $elapsed -lt $timeout ]; do
+  if [[ $(check_pods_ready) == "true" ]]; then
+    echo "All pods are ready!"
+    break
+  fi
+  
+  echo "Waiting for pods to be ready... ($elapsed/$timeout seconds)"
+  sleep $interval
+  elapsed=$((elapsed + interval))
+done
+
+if [ $elapsed -ge $timeout ]; then
+  echo "Timeout waiting for pods to be ready"
+  exit 1
+fi
+
+# Show final pod status
+echo "Final pod status:"
+kubectl get pods -n temporal 
