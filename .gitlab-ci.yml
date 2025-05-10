@@ -145,7 +145,13 @@ deploy-openebs:
     - export KUBECONFIG=~/.kube/config
     - chmod +x scripts/install-openebs.sh
     - scripts/install-openebs.sh
+    - echo "Waiting for OpenEBS pods to be ready..."
+    - kubectl wait --for=condition=ready pod -l app=openebs-localpv-provisioner -n openebs --timeout=300s
+    - kubectl wait --for=condition=ready pod -l app=openebs-ndm -n openebs --timeout=300s
+    - echo "Applying storage class..."
     - kubectl apply -f storage-class.yaml
+    - echo "Verifying storage class..."
+    - kubectl get sc
   rules:
     - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
       when: always
@@ -155,6 +161,7 @@ deploy-openebs:
     - init-master
     - init-workers
     - deploy-metallb
+  timeout: 15m
 
 
 deploy-temporal:
