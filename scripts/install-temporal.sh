@@ -19,9 +19,9 @@ helm upgrade --install temporal temporal/temporal \
   --set ui.enabled=true \
   --set ui.replicaCount=2 \
   --set server.persistence.size=10Gi \
-  --set server.persistence.storageClass=standard \
+  --set server.persistence.storageClass=openebs-hostpath \
   --set cassandra.persistence.size=10Gi \
-  --set cassandra.persistence.storageClass=standard \
+  --set cassandra.persistence.storageClass=openebs-hostpath \
   --set server.services.frontend.type=LoadBalancer \
   --set "server.services.frontend.annotations.metallb\\.universe\\.tf/loadBalancerIPs=${LOAD_BALANCER_IP}" \
   --set web.service.type=LoadBalancer \

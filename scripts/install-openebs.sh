@@ -29,10 +29,11 @@ kubectl get pods -n openebs --show-labels
 echo "All labels in OpenEBS namespace:"
 kubectl get all -n openebs --show-labels
 
-# Wait for pods to be ready using the labels we see
+# Wait for pods to be ready using the correct labels
 echo "Waiting for OpenEBS pods to be ready..."
-kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=openebs -n openebs --timeout=300s || true
-kubectl wait --for=condition=ready pod -l app.kubernetes.io/component=ndm -n openebs --timeout=300s || true
+kubectl wait --for=condition=ready pod -l app=openebs,component=localpv-provisioner -n openebs --timeout=300s
+kubectl wait --for=condition=ready pod -l app=openebs,component=ndm -n openebs --timeout=300s
+kubectl wait --for=condition=ready pod -l app=openebs,component=ndm-operator -n openebs --timeout=300s
 
 # Show final pod status
 echo "Final OpenEBS pods status:"
