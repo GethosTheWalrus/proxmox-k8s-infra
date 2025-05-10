@@ -10,7 +10,7 @@ kubectl create namespace temporal --dry-run=client -o yaml | kubectl apply -f -
 # Install Temporal with Helm
 helm upgrade --install temporal temporal/temporal \
   --namespace temporal \
-  --version 0.20.0 \
+  --version 0.62.0 \
   --set server.replicaCount=3 \
   --set server.service.type=LoadBalancer \
   --set "server.service.annotations.metallb\\.universe\\.tf/loadBalancerIPs=${LOAD_BALANCER_IP}" \
