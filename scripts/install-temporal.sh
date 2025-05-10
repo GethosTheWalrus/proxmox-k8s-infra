@@ -21,4 +21,8 @@ helm upgrade --install temporal temporal/temporal \
   --set server.persistence.size=10Gi \
   --set server.persistence.storageClass=standard \
   --set cassandra.persistence.size=10Gi \
-  --set cassandra.persistence.storageClass=standard 
+  --set cassandra.persistence.storageClass=standard \
+  --set server.services.frontend.type=LoadBalancer \
+  --set "server.services.frontend.annotations.metallb\\.universe\\.tf/loadBalancerIPs=${LOAD_BALANCER_IP}" \
+  --set web.service.type=LoadBalancer \
+  --set "web.service.annotations.metallb\\.universe\\.tf/loadBalancerIPs=${LOAD_BALANCER_IP}" 
