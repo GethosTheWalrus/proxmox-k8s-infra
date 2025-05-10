@@ -33,8 +33,8 @@ helm upgrade --install temporal temporal/temporal \
 
 # Wait for schema setup to complete
 echo "Waiting for schema setup to complete..."
-kubectl wait --for=condition=complete job/temporal-schema-setup -n temporal --timeout=600s
+kubectl wait --for=condition=complete job/temporal-schema-1 -n temporal --timeout=600s
 
-# Wait for schema update to complete
-echo "Waiting for schema update to complete..."
-kubectl wait --for=condition=complete job/temporal-schema-update -n temporal --timeout=600s 
+# Wait for all pods to be ready
+echo "Waiting for all pods to be ready..."
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/instance=temporal -n temporal --timeout=600s 
