@@ -25,4 +25,16 @@ helm upgrade --install temporal temporal/temporal \
   --set server.services.frontend.type=LoadBalancer \
   --set "server.services.frontend.annotations.metallb\\.universe\\.tf/loadBalancerIPs=${LOAD_BALANCER_IP}" \
   --set web.service.type=LoadBalancer \
-  --set "web.service.annotations.metallb\\.universe\\.tf/loadBalancerIPs=${LOAD_BALANCER_IP}" 
+  --set "web.service.annotations.metallb\\.universe\\.tf/loadBalancerIPs=${LOAD_BALANCER_IP}" \
+  --set schema.setup.enabled=true \
+  --set schema.update.enabled=true \
+  --set schema.setup.timeout=600s \
+  --set schema.update.timeout=600s
+
+# Wait for schema setup to complete
+echo "Waiting for schema setup to complete..."
+kubectl wait --for=condition=complete job/temporal-schema-setup -n temporal --timeout=600s
+
+# Wait for schema update to complete
+echo "Waiting for schema update to complete..."
+kubectl wait --for=condition=complete job/temporal-schema-update -n temporal --timeout=600s 
