@@ -29,6 +29,7 @@ deploy-cluster:
     paths:
       - scripts
       - key
+      - storage-class.yaml
 
 
 init-master:
@@ -130,6 +131,32 @@ deploy-nginx:
     - deploy-metallb
 
 
+deploy-openebs:
+  stage: deploy
+  image:
+    name: alpine/k8s:1.29.13
+  variables:
+    K8S1: 192.168.69.80
+  before_script:
+    - apk --no-cache add openssh-client kubectl helm
+  script:
+    - mkdir ~/.kube
+    - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
+    - export KUBECONFIG=~/.kube/config
+    - chmod +x scripts/install-openebs.sh
+    - scripts/install-openebs.sh
+    - kubectl apply -f storage-class.yaml
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
+      when: always
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+  needs:
+    - init-master
+    - init-workers
+    - deploy-metallb
+
+
 deploy-temporal:
     stage: deploy
     image:
@@ -154,6 +181,7 @@ deploy-temporal:
     - init-master
     - init-workers
     - deploy-metallb
+    - deploy-openebs
 
 
 destroy-cluster:
