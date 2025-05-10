@@ -10,7 +10,7 @@ variable "cpu_type" {
 }
 variable "dedicated_memory" {
     type=number
-    default=2048
+    default=8192
 }
 variable "disk_size" {
     type=number
