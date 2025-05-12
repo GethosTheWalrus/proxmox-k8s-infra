@@ -301,17 +301,11 @@ test-temporal-workflow:
     - if: $CI_COMMIT_BRANCH == "main"
       when: always
     - when: manual
-  needs:
-    - deploy-temporal
-    - deploy-temporal-workers
   environment:
     name: production
   needs:
-    - init-master
-    - init-workers
-    - deploy-metallb
-    - deploy-openebs
     - deploy-temporal
+    - deploy-temporal-workers
 
 
 destroy-cluster:
