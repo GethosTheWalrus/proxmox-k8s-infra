@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: csharp-worker
+  namespace: temporal
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: csharp-worker
+  template:
+    metadata:
+      labels:
+        app: csharp-worker
+    spec:
+      containers:
+      - name: csharp-worker
+        image: ${REGISTRY}/csharp-worker:latest
+        env:
+        - name: TEMPORAL_HOST
+          value: temporal-frontend.temporal.svc.cluster.local:7233
+        - name: TEMPORAL_NAMESPACE
+          value: default
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m" 

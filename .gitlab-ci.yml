@@ -1,6 +1,7 @@
 stages:
   - build
   - deploy
+  - test
   - destroy
 
 deploy-cluster:
@@ -190,6 +191,115 @@ deploy-temporal:
     - init-workers
     - deploy-metallb
     - deploy-openebs
+
+
+deploy-temporal-workers:
+  stage: deploy
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  before_script:
+    - apk add --no-cache curl
+    - curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+    - chmod +x kubectl
+    - mv kubectl /usr/local/bin/
+    - echo "$KUBE_CONFIG" | base64 -d > kubeconfig.yaml
+    - export KUBECONFIG=kubeconfig.yaml
+  script:
+    # Build and push Python worker
+    - docker build -t ${CI_REGISTRY}/temporal/python-worker:${CI_COMMIT_SHA} workers/python
+    - docker push ${CI_REGISTRY}/temporal/python-worker:${CI_COMMIT_SHA}
+    - sed "s|\${REGISTRY}|${CI_REGISTRY}/temporal|g" workers/k8s/python-worker.yaml | kubectl apply -f -
+
+    # Build and push TypeScript worker
+    - docker build -t ${CI_REGISTRY}/temporal/typescript-worker:${CI_COMMIT_SHA} workers/typescript
+    - docker push ${CI_REGISTRY}/temporal/typescript-worker:${CI_COMMIT_SHA}
+    - sed "s|\${REGISTRY}|${CI_REGISTRY}/temporal|g" workers/k8s/typescript-worker.yaml | kubectl apply -f -
+
+    # Build and push C# worker
+    - docker build -t ${CI_REGISTRY}/temporal/csharp-worker:${CI_COMMIT_SHA} workers/csharp
+    - docker push ${CI_REGISTRY}/temporal/csharp-worker:${CI_COMMIT_SHA}
+    - sed "s|\${REGISTRY}|${CI_REGISTRY}/temporal|g" workers/k8s/csharp-worker.yaml | kubectl apply -f -
+
+    # Build and push Go worker
+    - docker build -t ${CI_REGISTRY}/temporal/go-worker:${CI_COMMIT_SHA} workers/go
+    - docker push ${CI_REGISTRY}/temporal/go-worker:${CI_COMMIT_SHA}
+    - sed "s|\${REGISTRY}|${CI_REGISTRY}/temporal|g" workers/k8s/go-worker.yaml | kubectl apply -f -
+
+    # Wait for all workers to be ready
+    - kubectl rollout status deployment/python-worker -n temporal
+    - kubectl rollout status deployment/typescript-worker -n temporal
+    - kubectl rollout status deployment/csharp-worker -n temporal
+    - kubectl rollout status deployment/go-worker -n temporal
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: always
+    - when: manual
+  environment:
+    name: production
+  tags:
+    - k8s
+
+
+test-temporal-workflow:
+  stage: test
+  image: python:3.11-slim
+  variables:
+    K8S1: 192.168.69.80
+  before_script:
+    - apt-get update && apt-get install -y openssh-client
+    - pip install temporalio python-dotenv
+    - mkdir ~/.kube
+    - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
+    - export KUBECONFIG=~/.kube/config
+  script:
+    # Wait for all workers to be ready
+    - echo "Waiting for workers to be ready..."
+    - kubectl rollout status deployment/python-worker -n temporal
+    - kubectl rollout status deployment/typescript-worker -n temporal
+    - kubectl rollout status deployment/csharp-worker -n temporal
+    - kubectl rollout status deployment/go-worker -n temporal
+
+    # Run the workflow test
+    - echo "Running workflow test..."
+    - cd workers/python
+    - python test_workflow.py > workflow_output.txt
+
+    # Verify the output contains results from all languages
+    - |
+      if ! grep -q "Python says:" workflow_output.txt; then
+        echo "Python worker result not found"
+        exit 1
+      fi
+      if ! grep -q "TypeScript says:" workflow_output.txt; then
+        echo "TypeScript worker result not found"
+        exit 1
+      fi
+      if ! grep -q "C# says:" workflow_output.txt; then
+        echo "C# worker result not found"
+        exit 1
+      fi
+      if ! grep -q "Go says:" workflow_output.txt; then
+        echo "Go worker result not found"
+        exit 1
+      fi
+
+    # Display the workflow output
+    - echo "Workflow output:"
+    - cat workflow_output.txt
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: always
+    - when: manual
+  needs:
+    - deploy-temporal
+    - deploy-temporal-workers
+  environment:
+    name: production
+  tags:
+    - k8s
 
 
 destroy-cluster:
