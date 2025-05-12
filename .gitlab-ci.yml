@@ -210,7 +210,12 @@ deploy-temporal-workers:
     - export KUBECONFIG=kubeconfig.yaml
     # Configure Docker to use insecure registry
     - mkdir -p /etc/docker
-    - echo "{\"insecure-registries\": [\"git.home:5050\"]}" > /etc/docker/daemon.json
+    - |
+      cat > /etc/docker/daemon.json << EOF
+      {
+        "insecure-registries": ["git.home:5050"]
+      }
+      EOF
     - docker info
   script:
     # Build and push Python worker
