@@ -256,7 +256,8 @@ deploy-temporal-workers:
       {
         "insecure-registries": ["git.home:5050"],
         "allow-nondistributable-artifacts": true,
-        "disable-legacy-registry": true
+        "disable-legacy-registry": true,
+        "debug": true
       }
       EOF
     # Wait for Docker daemon to be ready
@@ -268,6 +269,14 @@ deploy-temporal-workers:
         echo "Waiting for Docker daemon... ($i/30)"
         sleep 1
       done
+    # Configure Docker client to use HTTP
+    - |
+      cat > ~/.docker/config.json << EOF
+      {
+        "insecure-registries": ["git.home:5050"],
+        "auths": {}
+      }
+      EOF
     # Login to GitLab registry using stdin for password
     - echo "$CI_JOB_TOKEN" | docker login -u gitlab-ci-token --password-stdin http://git.home:5050
     # Login to Docker Hub if credentials are provided
@@ -278,24 +287,24 @@ deploy-temporal-workers:
       fi
   script:
     # Build and push Python worker
-    - docker build -t http://git.home:5050/temporal/python-worker:${CI_COMMIT_SHA} workers/python
-    - docker push http://git.home:5050/temporal/python-worker:${CI_COMMIT_SHA}
-    - sed "s|\${REGISTRY}|http://git.home:5050/temporal|g" workers/k8s/python-worker.yaml | kubectl apply -f -
+    - docker build -t git.home:5050/temporal/python-worker:${CI_COMMIT_SHA} workers/python
+    - docker push git.home:5050/temporal/python-worker:${CI_COMMIT_SHA}
+    - sed "s|\${REGISTRY}|git.home:5050/temporal|g" workers/k8s/python-worker.yaml | kubectl apply -f -
 
     # Build and push TypeScript worker
-    - docker build -t http://git.home:5050/temporal/typescript-worker:${CI_COMMIT_SHA} workers/typescript
-    - docker push http://git.home:5050/temporal/typescript-worker:${CI_COMMIT_SHA}
-    - sed "s|\${REGISTRY}|http://git.home:5050/temporal|g" workers/k8s/typescript-worker.yaml | kubectl apply -f -
+    - docker build -t git.home:5050/temporal/typescript-worker:${CI_COMMIT_SHA} workers/typescript
+    - docker push git.home:5050/temporal/typescript-worker:${CI_COMMIT_SHA}
+    - sed "s|\${REGISTRY}|git.home:5050/temporal|g" workers/k8s/typescript-worker.yaml | kubectl apply -f -
 
     # Build and push C# worker
-    - docker build -t http://git.home:5050/temporal/csharp-worker:${CI_COMMIT_SHA} workers/csharp
-    - docker push http://git.home:5050/temporal/csharp-worker:${CI_COMMIT_SHA}
-    - sed "s|\${REGISTRY}|http://git.home:5050/temporal|g" workers/k8s/csharp-worker.yaml | kubectl apply -f -
+    - docker build -t git.home:5050/temporal/csharp-worker:${CI_COMMIT_SHA} workers/csharp
+    - docker push git.home:5050/temporal/csharp-worker:${CI_COMMIT_SHA}
+    - sed "s|\${REGISTRY}|git.home:5050/temporal|g" workers/k8s/csharp-worker.yaml | kubectl apply -f -
 
     # Build and push Go worker
-    - docker build -t http://git.home:5050/temporal/go-worker:${CI_COMMIT_SHA} workers/go
-    - docker push http://git.home:5050/temporal/go-worker:${CI_COMMIT_SHA}
-    - sed "s|\${REGISTRY}|http://git.home:5050/temporal|g" workers/k8s/go-worker.yaml | kubectl apply -f -
+    - docker build -t git.home:5050/temporal/go-worker:${CI_COMMIT_SHA} workers/go
+    - docker push git.home:5050/temporal/go-worker:${CI_COMMIT_SHA}
+    - sed "s|\${REGISTRY}|git.home:5050/temporal|g" workers/k8s/go-worker.yaml | kubectl apply -f -
 
     # Wait for all workers to be ready
     - kubectl rollout status deployment/python-worker -n temporal
