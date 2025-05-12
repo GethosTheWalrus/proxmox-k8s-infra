@@ -238,6 +238,10 @@ deploy-temporal-workers:
   variables:
     DOCKER_TLS_CERTDIR: "/certs"
     DOCKER_DRIVER: overlay2
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_VERIFY: 1
+    DOCKER_CERT_PATH: "/certs/client"
+    CI_REGISTRY: "http://git.home:5050"
   before_script:
     - apk add --no-cache curl
     - curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
@@ -245,34 +249,53 @@ deploy-temporal-workers:
     - mv kubectl /usr/local/bin/
     - echo "$KUBE_CONFIG" | base64 -d > kubeconfig.yaml
     - export KUBECONFIG=kubeconfig.yaml
-    # Login to GitLab registry
-    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    # Configure Docker client
+    - mkdir -p /etc/docker
+    - |
+      cat > /etc/docker/daemon.json << EOF
+      {
+        "insecure-registries": ["git.home:5050"],
+        "allow-nondistributable-artifacts": true,
+        "disable-legacy-registry": true
+      }
+      EOF
+    # Wait for Docker daemon to be ready
+    - |
+      for i in $(seq 1 30); do
+        if docker info > /dev/null 2>&1; then
+          break
+        fi
+        echo "Waiting for Docker daemon... ($i/30)"
+        sleep 1
+      done
+    # Login to GitLab registry using stdin for password
+    - echo "$CI_JOB_TOKEN" | docker login -u gitlab-ci-token --password-stdin http://git.home:5050
     # Login to Docker Hub if credentials are provided
     - |
       if [ -n "$DOCKER_USERNAME" ] && [ -n "$DOCKER_PASSWORD" ]; then
         echo "Logging into Docker Hub..."
-        docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+        echo "$DOCKER_PASSWORD" | docker login -u $DOCKER_USERNAME --password-stdin
       fi
   script:
     # Build and push Python worker
-    - docker build -t ${CI_REGISTRY}/temporal/python-worker:${CI_COMMIT_SHA} workers/python
-    - docker push ${CI_REGISTRY}/temporal/python-worker:${CI_COMMIT_SHA}
-    - sed "s|\${REGISTRY}|${CI_REGISTRY}/temporal|g" workers/k8s/python-worker.yaml | kubectl apply -f -
+    - docker build -t http://git.home:5050/temporal/python-worker:${CI_COMMIT_SHA} workers/python
+    - docker push http://git.home:5050/temporal/python-worker:${CI_COMMIT_SHA}
+    - sed "s|\${REGISTRY}|http://git.home:5050/temporal|g" workers/k8s/python-worker.yaml | kubectl apply -f -
 
     # Build and push TypeScript worker
-    - docker build -t ${CI_REGISTRY}/temporal/typescript-worker:${CI_COMMIT_SHA} workers/typescript
-    - docker push ${CI_REGISTRY}/temporal/typescript-worker:${CI_COMMIT_SHA}
-    - sed "s|\${REGISTRY}|${CI_REGISTRY}/temporal|g" workers/k8s/typescript-worker.yaml | kubectl apply -f -
+    - docker build -t http://git.home:5050/temporal/typescript-worker:${CI_COMMIT_SHA} workers/typescript
+    - docker push http://git.home:5050/temporal/typescript-worker:${CI_COMMIT_SHA}
+    - sed "s|\${REGISTRY}|http://git.home:5050/temporal|g" workers/k8s/typescript-worker.yaml | kubectl apply -f -
 
     # Build and push C# worker
-    - docker build -t ${CI_REGISTRY}/temporal/csharp-worker:${CI_COMMIT_SHA} workers/csharp
-    - docker push ${CI_REGISTRY}/temporal/csharp-worker:${CI_COMMIT_SHA}
-    - sed "s|\${REGISTRY}|${CI_REGISTRY}/temporal|g" workers/k8s/csharp-worker.yaml | kubectl apply -f -
+    - docker build -t http://git.home:5050/temporal/csharp-worker:${CI_COMMIT_SHA} workers/csharp
+    - docker push http://git.home:5050/temporal/csharp-worker:${CI_COMMIT_SHA}
+    - sed "s|\${REGISTRY}|http://git.home:5050/temporal|g" workers/k8s/csharp-worker.yaml | kubectl apply -f -
 
     # Build and push Go worker
-    - docker build -t ${CI_REGISTRY}/temporal/go-worker:${CI_COMMIT_SHA} workers/go
-    - docker push ${CI_REGISTRY}/temporal/go-worker:${CI_COMMIT_SHA}
-    - sed "s|\${REGISTRY}|${CI_REGISTRY}/temporal|g" workers/k8s/go-worker.yaml | kubectl apply -f -
+    - docker build -t http://git.home:5050/temporal/go-worker:${CI_COMMIT_SHA} workers/go
+    - docker push http://git.home:5050/temporal/go-worker:${CI_COMMIT_SHA}
+    - sed "s|\${REGISTRY}|http://git.home:5050/temporal|g" workers/k8s/go-worker.yaml | kubectl apply -f -
 
     # Wait for all workers to be ready
     - kubectl rollout status deployment/python-worker -n temporal
