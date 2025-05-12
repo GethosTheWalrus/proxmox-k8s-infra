@@ -233,7 +233,8 @@ deploy-temporal-workers:
   stage: deploy
   image: docker:20.10.16
   services:
-    - docker:20.10.16-dind
+    - name: docker:20.10.16-dind
+      command: ["--insecure-registry=git.home:5050"]
   variables:
     DOCKER_TLS_CERTDIR: "/certs"
     DOCKER_DRIVER: overlay2
@@ -244,17 +245,6 @@ deploy-temporal-workers:
     - mv kubectl /usr/local/bin/
     - echo "$KUBE_CONFIG" | base64 -d > kubeconfig.yaml
     - export KUBECONFIG=kubeconfig.yaml
-    # Configure Docker to use insecure registry
-    - mkdir -p /etc/docker
-    - |
-      cat > /etc/docker/daemon.json << EOF
-      {
-        "insecure-registries": ["git.home:5050"]
-      }
-      EOF
-    # Restart Docker daemon to apply changes
-    - apk add --no-cache docker-cli
-    - docker info
     # Login to GitLab registry
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
     # Login to Docker Hub if credentials are provided
