@@ -19,4 +19,5 @@ executor = "docker"
   allowed_pull_policies = ["always", "if-not-present"]
   allowed_images = ["*/*/*/*:*", "*/*/*:*", "*/*:*", "*:*", "docker:*", "docker:*:*"]
   allowed_services = ["*/*/*:*", "*/*:*", "*:*", "docker:*", "docker:*:*", "docker:*:*:*"]
-  network_mode = "host" 
+  network_mode = "host"
+  insecure_registries = ["git.home:5050"] 
