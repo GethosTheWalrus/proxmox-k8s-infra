@@ -199,7 +199,7 @@ deploy-temporal:
           echo "Docker credentials not provided"
           echo "DOCKER_USERNAME is set: $([ -n "$DOCKER_USERNAME" ] && echo 'yes' || echo 'no')"
           echo "DOCKER_PASSWORD is set: $([ -n "$DOCKER_PASSWORD" ] && echo 'yes' || echo 'no')"
-        fi
+        fi 
       # Create Kubernetes secret for Docker Hub credentials
       - |
         if [ -n "$DOCKER_USERNAME" ] && [ -n "$DOCKER_PASSWORD" ]; then
