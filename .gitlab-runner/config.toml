@@ -16,5 +16,5 @@ executor = "docker"
   ]
   shm_size = 0
   allowed_pull_policies = ["always", "if-not-present"]
-  allowed_images = ["*/*/*/*:*", "*/*/*:*", "*/*:*", "*:*", "docker:*"]
-  allowed_services = ["*/*/*:*", "*/*:*"] 
+  allowed_images = ["*/*/*/*:*", "*/*/*:*", "*/*:*", "*:*", "docker:*", "docker:*:*"]
+  allowed_services = ["*/*/*:*", "*/*:*", "*:*", "docker:*", "docker:*:*", "docker:*:*:*"] 
