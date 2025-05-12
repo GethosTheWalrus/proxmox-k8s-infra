@@ -234,7 +234,7 @@ deploy-temporal-workers:
   image: docker:20.10.16
   services:
     - name: docker:20.10.16-dind
-      command: ["--insecure-registry=git.home:5050", "--registry-mirror=http://git.home:5050"]
+      command: ["--insecure-registry=git.home:5050"]
   variables:
     DOCKER_TLS_CERTDIR: "/certs"
     DOCKER_DRIVER: overlay2
@@ -242,9 +242,8 @@ deploy-temporal-workers:
     DOCKER_TLS_VERIFY: 1
     DOCKER_CERT_PATH: "/certs/client"
     CI_REGISTRY: "http://git.home:5050"
-    DOCKER_OPTS: "--insecure-registry=git.home:5050"
   before_script:
-    - apk add --no-cache curl
+    - apk add --no-cache curl docker-cli
     - curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
     - chmod +x kubectl
     - mv kubectl /usr/local/bin/
@@ -255,11 +254,7 @@ deploy-temporal-workers:
     - |
       cat > /etc/docker/daemon.json << EOF
       {
-        "insecure-registries": ["git.home:5050"],
-        "allow-nondistributable-artifacts": true,
-        "disable-legacy-registry": true,
-        "debug": true,
-        "registry-mirrors": ["http://git.home:5050"]
+        "insecure-registries": ["git.home:5050"]
       }
       EOF
     # Wait for Docker daemon to be ready
@@ -276,14 +271,13 @@ deploy-temporal-workers:
       cat > ~/.docker/config.json << EOF
       {
         "insecure-registries": ["git.home:5050"],
-        "auths": {},
-        "registry-mirrors": ["http://git.home:5050"]
+        "auths": {}
       }
       EOF
     # Test registry connection
     - curl -v http://git.home:5050/v2/
     # Login to GitLab registry using stdin for password
-    - echo "$CI_JOB_TOKEN" | docker login -u gitlab-ci-token --password-stdin http://git.home:5050
+    - echo "$CI_JOB_TOKEN" | docker login -u gitlab-ci-token --password-stdin git.home:5050
     # Login to Docker Hub if credentials are provided
     - |
       if [ -n "$DOCKER_USERNAME" ] && [ -n "$DOCKER_PASSWORD" ]; then
