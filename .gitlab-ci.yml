@@ -173,7 +173,31 @@ deploy-temporal:
       K8S1: 192.168.69.80
       LOAD_BALANCER_IP: 192.168.69.98
     before_script:
-      - apk --no-cache add openssh-client kubectl helm
+      - apk --no-cache add openssh-client kubectl helm docker-cli
+      # Configure Docker to use insecure registry
+      - mkdir -p /etc/docker
+      - |
+        cat > /etc/docker/daemon.json << EOF
+        {
+          "insecure-registries": ["git.home:5050"]
+        }
+        EOF
+      # Login to Docker Hub if credentials are provided
+      - |
+        if [ -n "$DOCKER_USERNAME" ] && [ -n "$DOCKER_PASSWORD" ]; then
+          echo "Logging into Docker Hub..."
+          docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+        fi
+      # Create Kubernetes secret for Docker Hub credentials
+      - |
+        if [ -n "$DOCKER_USERNAME" ] && [ -n "$DOCKER_PASSWORD" ]; then
+          kubectl create secret docker-registry dockerhub-secret \
+            --docker-server=https://index.docker.io/v1/ \
+            --docker-username=$DOCKER_USERNAME \
+            --docker-password=$DOCKER_PASSWORD \
+            --docker-email=$DOCKER_EMAIL \
+            --namespace=temporal || true
+        fi
     script:
       - mkdir ~/.kube
       - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
@@ -218,8 +242,14 @@ deploy-temporal-workers:
     # Restart Docker daemon to apply changes
     - apk add --no-cache docker-cli
     - docker info
-    # Login to the registry using job token
+    # Login to GitLab registry
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    # Login to Docker Hub if credentials are provided
+    - |
+      if [ -n "$DOCKER_USERNAME" ] && [ -n "$DOCKER_PASSWORD" ]; then
+        echo "Logging into Docker Hub..."
+        docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+      fi
   script:
     # Build and push Python worker
     - docker build -t ${CI_REGISTRY}/temporal/python-worker:${CI_COMMIT_SHA} workers/python
