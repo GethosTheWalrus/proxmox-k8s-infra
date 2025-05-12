@@ -185,14 +185,27 @@ deploy-temporal:
       # Login to Docker Hub if credentials are provided
       - |
         if [ -n "$DOCKER_USERNAME" ] && [ -n "$DOCKER_PASSWORD" ]; then
-          echo "Logging into Docker Hub..."
-          docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+          echo "Attempting to login to Docker Hub..."
+          echo "Username: $DOCKER_USERNAME"
+          echo "Password length: ${#DOCKER_PASSWORD}"
+          # Try login with explicit registry
+          docker login docker.io -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+          # If that fails, try without specifying registry
+          if [ $? -ne 0 ]; then
+            echo "First login attempt failed, trying alternative method..."
+            docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+          fi
+        else
+          echo "Docker credentials not provided"
+          echo "DOCKER_USERNAME is set: $([ -n "$DOCKER_USERNAME" ] && echo 'yes' || echo 'no')"
+          echo "DOCKER_PASSWORD is set: $([ -n "$DOCKER_PASSWORD" ] && echo 'yes' || echo 'no')"
         fi
       # Create Kubernetes secret for Docker Hub credentials
       - |
         if [ -n "$DOCKER_USERNAME" ] && [ -n "$DOCKER_PASSWORD" ]; then
+          echo "Creating Kubernetes secret for Docker Hub..."
           kubectl create secret docker-registry dockerhub-secret \
-            --docker-server=https://index.docker.io/v1/ \
+            --docker-server=docker.io \
             --docker-username=$DOCKER_USERNAME \
             --docker-password=$DOCKER_PASSWORD \
             --docker-email=$DOCKER_EMAIL \
