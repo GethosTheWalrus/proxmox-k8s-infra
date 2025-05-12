@@ -239,9 +239,12 @@ deploy-temporal-workers:
     - when: manual
   environment:
     name: production
-  tags:
-    - k8s
-
+  needs:
+    - init-master
+    - init-workers
+    - deploy-metallb
+    - deploy-openebs
+    - deploy-temporal
 
 test-temporal-workflow:
   stage: test
@@ -298,8 +301,12 @@ test-temporal-workflow:
     - deploy-temporal-workers
   environment:
     name: production
-  tags:
-    - k8s
+  needs:
+    - init-master
+    - init-workers
+    - deploy-metallb
+    - deploy-openebs
+    - deploy-temporal
 
 
 destroy-cluster:
