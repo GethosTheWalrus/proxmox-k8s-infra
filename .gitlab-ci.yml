@@ -216,7 +216,11 @@ deploy-temporal-workers:
         "insecure-registries": ["git.home:5050"]
       }
       EOF
+    # Restart Docker daemon to apply changes
+    - apk add --no-cache docker-cli
     - docker info
+    # Login to the registry using job token
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
   script:
     # Build and push Python worker
     - docker build -t ${CI_REGISTRY}/temporal/python-worker:${CI_COMMIT_SHA} workers/python
