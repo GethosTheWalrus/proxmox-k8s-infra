@@ -42,10 +42,20 @@ build-python-worker:
   services:
     - name: docker:20.10.16-dind
       command: ["--insecure-registry=git.home:5050"]
+  before_script:
+    - mkdir -p /etc/docker
+    - |
+      cat > /etc/docker/daemon.json << EOF
+      {
+        "insecure-registries": ["git.home:5050"]
+      }
+      EOF
+    - apk add --no-cache curl
+    - curl -X GET http://git.home:5050/v2/ || true
+    - docker login git.home:5050 -u mike -p $GITLAB_PASSWORD
   script:
     - docker build -t $REGISTRY_PATH/python-worker:latest workers/python
-    - docker tag $REGISTRY_PATH/python-worker:latest http://$REGISTRY_PATH/python-worker:latest
-    - docker push http://$REGISTRY_PATH/python-worker:latest
+    - docker push $REGISTRY_PATH/python-worker:latest
 
 build-typescript-worker:
   stage: build
@@ -53,10 +63,20 @@ build-typescript-worker:
   services:
     - name: docker:20.10.16-dind
       command: ["--insecure-registry=git.home:5050"]
+  before_script:
+    - mkdir -p /etc/docker
+    - |
+      cat > /etc/docker/daemon.json << EOF
+      {
+        "insecure-registries": ["git.home:5050"]
+      }
+      EOF
+    - apk add --no-cache curl
+    - curl -X GET http://git.home:5050/v2/ || true
+    - docker login git.home:5050 -u mike -p $GITLAB_PASSWORD
   script:
     - docker build -t $REGISTRY_PATH/typescript-worker:latest workers/typescript
-    - docker tag $REGISTRY_PATH/typescript-worker:latest http://$REGISTRY_PATH/typescript-worker:latest
-    - docker push http://$REGISTRY_PATH/typescript-worker:latest
+    - docker push $REGISTRY_PATH/typescript-worker:latest
 
 build-csharp-worker:
   stage: build
@@ -64,10 +84,20 @@ build-csharp-worker:
   services:
     - name: docker:20.10.16-dind
       command: ["--insecure-registry=git.home:5050"]
+  before_script:
+    - mkdir -p /etc/docker
+    - |
+      cat > /etc/docker/daemon.json << EOF
+      {
+        "insecure-registries": ["git.home:5050"]
+      }
+      EOF
+    - apk add --no-cache curl
+    - curl -X GET http://git.home:5050/v2/ || true
+    - docker login git.home:5050 -u mike -p $GITLAB_PASSWORD
   script:
     - docker build -t $REGISTRY_PATH/csharp-worker:latest workers/csharp
-    - docker tag $REGISTRY_PATH/csharp-worker:latest http://$REGISTRY_PATH/csharp-worker:latest
-    - docker push http://$REGISTRY_PATH/csharp-worker:latest
+    - docker push $REGISTRY_PATH/csharp-worker:latest
 
 build-go-worker:
   stage: build
@@ -75,10 +105,20 @@ build-go-worker:
   services:
     - name: docker:20.10.16-dind
       command: ["--insecure-registry=git.home:5050"]
+  before_script:
+    - mkdir -p /etc/docker
+    - |
+      cat > /etc/docker/daemon.json << EOF
+      {
+        "insecure-registries": ["git.home:5050"]
+      }
+      EOF
+    - apk add --no-cache curl
+    - curl -X GET http://git.home:5050/v2/ || true
+    - docker login git.home:5050 -u mike -p $GITLAB_PASSWORD
   script:
     - docker build -t $REGISTRY_PATH/go-worker:latest workers/go
-    - docker tag $REGISTRY_PATH/go-worker:latest http://$REGISTRY_PATH/go-worker:latest
-    - docker push http://$REGISTRY_PATH/go-worker:latest
+    - docker push $REGISTRY_PATH/go-worker:latest
 
 
 init-master:
