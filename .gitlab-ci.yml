@@ -51,7 +51,7 @@ build-python-worker:
       }
       EOF
     - apk add --no-cache curl
-    - docker login -u mike -p $GITLAB_PASSWORD git.home:5050
+    - docker login -u mike -p $GITLABACCESSTOKEN git.home:5050
   script:
     - docker build -t $REGISTRY_PATH/python-worker:latest workers/python
     - docker push $REGISTRY_PATH/python-worker:latest
@@ -71,7 +71,7 @@ build-typescript-worker:
       }
       EOF
     - apk add --no-cache curl
-    - docker login -u mike -p $GITLAB_PASSWORD git.home:5050
+    - docker login -u mike -p $GITLABACCESSTOKEN git.home:5050
   script:
     - docker build -t $REGISTRY_PATH/typescript-worker:latest workers/typescript
     - docker push $REGISTRY_PATH/typescript-worker:latest
@@ -91,7 +91,7 @@ build-csharp-worker:
       }
       EOF
     - apk add --no-cache curl
-    - docker login -u mike -p $GITLAB_PASSWORD git.home:5050
+    - docker login -u mike -p $GITLABACCESSTOKEN git.home:5050
   script:
     - docker build -t $REGISTRY_PATH/csharp-worker:latest workers/csharp
     - docker push $REGISTRY_PATH/csharp-worker:latest
@@ -111,7 +111,7 @@ build-go-worker:
       }
       EOF
     - apk add --no-cache curl
-    - docker login -u mike -p $GITLAB_PASSWORD git.home:5050
+    - docker login -u mike -p $GITLABACCESSTOKEN git.home:5050
   script:
     - docker build -t $REGISTRY_PATH/go-worker:latest workers/go
     - docker push $REGISTRY_PATH/go-worker:latest
