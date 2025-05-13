@@ -3,6 +3,7 @@ variables:
 
 stages:
   - build
+  - configure
   - deploy
   - test
   - destroy
@@ -35,9 +36,45 @@ deploy-cluster:
       - key
       - storage-class.yaml
 
+build-python-worker:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  script:
+    - docker build -t $REGISTRY_PATH/python-worker:latest workers/python
+    - docker push $REGISTRY_PATH/python-worker:latest
+
+build-typescript-worker:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  script:
+    - docker build -t $REGISTRY_PATH/typescript-worker:latest workers/typescript
+    - docker push $REGISTRY_PATH/typescript-worker:latest
+
+build-csharp-worker:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  script:
+    - docker build -t $REGISTRY_PATH/csharp-worker:latest workers/csharp
+    - docker push $REGISTRY_PATH/csharp-worker:latest
+
+build-go-worker:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  script:
+    - docker build -t $REGISTRY_PATH/go-worker:latest workers/go
+    - docker push $REGISTRY_PATH/go-worker:latest
+
 
 init-master:
-  stage: build
+  stage: configure
   image:
     name: ubuntu:latest
   variables:
@@ -61,9 +98,8 @@ init-master:
       - key
       - scripts
 
-
 init-workers:
-  stage: build
+  stage: configure
   image:
     name: ubuntu:latest
   variables:
@@ -113,7 +149,6 @@ deploy-metallb:
     - init-master
     - init-workers
 
-
 deploy-nginx:
   stage: deploy
   image:
@@ -135,7 +170,6 @@ deploy-nginx:
     - init-master
     - init-workers
     - deploy-metallb
-
 
 deploy-openebs:
   stage: deploy
@@ -166,7 +200,6 @@ deploy-openebs:
     - init-master
     - init-workers
     - deploy-metallb
-
 
 deploy-temporal:
     stage: deploy
@@ -231,7 +264,6 @@ deploy-temporal:
     - deploy-metallb
     - deploy-openebs
 
-
 deploy-temporal-workers:
   stage: deploy
   image: alpine/k8s:1.29.13
@@ -273,6 +305,7 @@ deploy-temporal-workers:
     - deploy-metallb
     - deploy-openebs
     - deploy-temporal
+
 
 test-temporal-workflow:
   stage: test
@@ -350,39 +383,3 @@ destroy-cluster:
   rules:
   - when: manual
   needs: []
-
-build-python-worker:
-  stage: build
-  image: docker:20.10.16
-  services:
-    - docker:20.10.16-dind
-  script:
-    - docker build -t $REGISTRY_PATH/python-worker:latest workers/python
-    - docker push $REGISTRY_PATH/python-worker:latest
-
-build-typescript-worker:
-  stage: build
-  image: docker:20.10.16
-  services:
-    - docker:20.10.16-dind
-  script:
-    - docker build -t $REGISTRY_PATH/typescript-worker:latest workers/typescript
-    - docker push $REGISTRY_PATH/typescript-worker:latest
-
-build-csharp-worker:
-  stage: build
-  image: docker:20.10.16
-  services:
-    - docker:20.10.16-dind
-  script:
-    - docker build -t $REGISTRY_PATH/csharp-worker:latest workers/csharp
-    - docker push $REGISTRY_PATH/csharp-worker:latest
-
-build-go-worker:
-  stage: build
-  image: docker:20.10.16
-  services:
-    - docker:20.10.16-dind
-  script:
-    - docker build -t $REGISTRY_PATH/go-worker:latest workers/go
-    - docker push $REGISTRY_PATH/go-worker:latest
