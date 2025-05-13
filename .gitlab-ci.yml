@@ -8,7 +8,7 @@ stages:
   - test
   - destroy
 
-deploy-cluster:
+deploy-infra:
   stage: build
   image: 
     name: hashicorp/terraform:latest
@@ -51,8 +51,7 @@ build-python-worker:
       }
       EOF
     - apk add --no-cache curl
-    - curl -X GET http://git.home:5050/v2/ || true
-    - docker login git.home:5050 -u mike -p $GITLAB_PASSWORD
+    - echo "$GITLAB_PASSWORD" | docker login git.home:5050 -u mike --password-stdin
   script:
     - docker build -t $REGISTRY_PATH/python-worker:latest workers/python
     - docker push $REGISTRY_PATH/python-worker:latest
@@ -72,8 +71,7 @@ build-typescript-worker:
       }
       EOF
     - apk add --no-cache curl
-    - curl -X GET http://git.home:5050/v2/ || true
-    - docker login git.home:5050 -u mike -p $GITLAB_PASSWORD
+    - echo "$GITLAB_PASSWORD" | docker login git.home:5050 -u mike --password-stdin
   script:
     - docker build -t $REGISTRY_PATH/typescript-worker:latest workers/typescript
     - docker push $REGISTRY_PATH/typescript-worker:latest
@@ -93,8 +91,7 @@ build-csharp-worker:
       }
       EOF
     - apk add --no-cache curl
-    - curl -X GET http://git.home:5050/v2/ || true
-    - docker login git.home:5050 -u mike -p $GITLAB_PASSWORD
+    - echo "$GITLAB_PASSWORD" | docker login git.home:5050 -u mike --password-stdin
   script:
     - docker build -t $REGISTRY_PATH/csharp-worker:latest workers/csharp
     - docker push $REGISTRY_PATH/csharp-worker:latest
@@ -114,8 +111,7 @@ build-go-worker:
       }
       EOF
     - apk add --no-cache curl
-    - curl -X GET http://git.home:5050/v2/ || true
-    - docker login git.home:5050 -u mike -p $GITLAB_PASSWORD
+    - echo "$GITLAB_PASSWORD" | docker login git.home:5050 -u mike --password-stdin
   script:
     - docker build -t $REGISTRY_PATH/go-worker:latest workers/go
     - docker push $REGISTRY_PATH/go-worker:latest
@@ -139,7 +135,7 @@ init-master:
     when: always
   allow_failure: false
   needs:
-    - deploy-cluster
+    - deploy-infra
   artifacts:
     paths:
       - hash
@@ -169,7 +165,7 @@ init-workers:
     when: always
     allow_failure: false
   needs:
-    - deploy-cluster
+    - deploy-infra
     - init-master
 
 
