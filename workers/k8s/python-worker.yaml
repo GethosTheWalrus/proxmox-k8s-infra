@@ -13,6 +13,8 @@ spec:
       labels:
         app: python-worker
     spec:
+      imagePullSecrets:
+      - name: gitlab-registry-secret
       containers:
       - name: python-worker
         image: ${REGISTRY}/python-worker:latest

@@ -13,6 +13,8 @@ spec:
       labels:
         app: go-worker
     spec:
+      imagePullSecrets:
+      - name: gitlab-registry-secret
       containers:
       - name: go-worker
         image: ${REGISTRY}/go-worker:latest

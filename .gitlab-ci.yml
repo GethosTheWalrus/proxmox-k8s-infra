@@ -314,11 +314,20 @@ deploy-temporal-workers:
   variables:
     K8S1: 192.168.69.80
   before_script:
-    - apk --no-cache add openssh-client
+    - apk --no-cache add openssh-client kubectl
   script:
     - mkdir ~/.kube
     - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
     - export KUBECONFIG=~/.kube/config
+
+    # Create GitLab registry secret
+    - |
+      kubectl create secret docker-registry gitlab-registry-secret \
+        --docker-server=git.home:5050 \
+        --docker-username=$GITLABUSERNAME \
+        --docker-password=$GITLABACCESSTOKEN \
+        --docker-email=$GITLAB_USER_EMAIL \
+        --namespace=temporal || true
 
     # Deploy Python worker
     - sed "s|\${REGISTRY}|$REGISTRY_PATH|g" workers/k8s/python-worker.yaml | kubectl apply -f -
@@ -326,17 +335,26 @@ deploy-temporal-workers:
     # Deploy TypeScript worker
     - sed "s|\${REGISTRY}|$REGISTRY_PATH|g" workers/k8s/typescript-worker.yaml | kubectl apply -f -
 
-    # Deploy C# worker
-    - sed "s|\${REGISTRY}|$REGISTRY_PATH|g" workers/k8s/csharp-worker.yaml | kubectl apply -f -
-
     # Deploy Go worker
     - sed "s|\${REGISTRY}|$REGISTRY_PATH|g" workers/k8s/go-worker.yaml | kubectl apply -f -
 
-    # Wait for all workers to be ready
-    - kubectl rollout status deployment/python-worker -n temporal
-    - kubectl rollout status deployment/typescript-worker -n temporal
-    - kubectl rollout status deployment/csharp-worker -n temporal
-    - kubectl rollout status deployment/go-worker -n temporal
+    # Debug pod status
+    - echo "Checking pod status..."
+    - kubectl get pods -n temporal
+    - echo "Checking pod events..."
+    - kubectl get events -n temporal --sort-by='.lastTimestamp'
+
+    # Wait for deployments with timeout and debug
+    - |
+      for deployment in python-worker typescript-worker go-worker; do
+        echo "Waiting for $deployment deployment..."
+        kubectl rollout status deployment/$deployment -n temporal --timeout=300s || {
+          echo "Deployment $deployment failed to roll out. Checking pod status..."
+          kubectl get pods -n temporal -l app=$deployment
+          kubectl describe pods -n temporal -l app=$deployment
+          exit 1
+        }
+      done
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
       when: always
@@ -365,7 +383,7 @@ test-temporal-workflow:
         POSTGRES_USER: temporal
         POSTGRES_PASSWORD: temporal
   variables:
-    TEMPORAL_HOST: temporal:7233
+    TEMPORAL_HOST: 192.168.69.98:7233
     TEMPORAL_NAMESPACE: default
   script:
     - pip install temporalio
@@ -391,6 +409,14 @@ test-temporal-workflow:
                   retry_policy=RetryPolicy(maximum_attempts=3)
               )
               
+              # Start TypeScript activity
+              typescript_result = await workflow.execute_activity(
+                  "ProcessTypeScript",
+                  "Hello from TypeScript",
+                  start_to_close_timeout=timedelta(seconds=5),
+                  retry_policy=RetryPolicy(maximum_attempts=3)
+              )
+              
               # Start Go activity
               go_result = await workflow.execute_activity(
                   "ProcessGo",
@@ -399,14 +425,15 @@ test-temporal-workflow:
                   retry_policy=RetryPolicy(maximum_attempts=3)
               )
               
-              return f"Python: {python_result}, Go: {go_result}"
+              return f"Python: {python_result}, TypeScript: {typescript_result}, Go: {go_result}"
 
       @activity.defn
       async def python_activity(message: str) -> str:
           return f"Python says: {message}"
 
       async def main():
-          client = await Client.connect("localhost:7233", namespace="default")
+          # Use the service name instead of localhost
+          client = await Client.connect("temporal:7233", namespace="default")
           
           # Start the workflow
           handle = await client.start_workflow(
