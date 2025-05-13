@@ -1,5 +1,5 @@
 import { Worker } from '@temporalio/worker';
-import { Connection } from '@temporalio/client';
+import { NativeConnection } from '@temporalio/client';
 import * as activities from './activities';
 import { TypeScriptWorkflowImpl } from './workflows';
 import dotenv from 'dotenv';
@@ -7,7 +7,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 async function run() {
-  const connection = await Connection.connect({
+  const connection = await NativeConnection.connect({
     address: process.env.TEMPORAL_HOST || 'temporal-frontend.temporal.svc.cluster.local:7233',
   });
 

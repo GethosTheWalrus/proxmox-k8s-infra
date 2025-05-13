@@ -7,5 +7,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Start both the worker and the main workflow
-CMD ["python", "main_workflow.py"] 
+ENV TEMPORAL_HOST=temporal-frontend.temporal.svc.cluster.local:7233
+ENV TEMPORAL_NAMESPACE=default
+
+CMD ["python", "worker.py"] 

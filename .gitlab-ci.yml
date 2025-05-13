@@ -1,4 +1,7 @@
-stages: 
+variables:
+  REGISTRY_PATH: "git.home:5050/mike/proxmox-k8s-infra"
+
+stages:
   - build
   - deploy
   - test
@@ -231,79 +234,27 @@ deploy-temporal:
 
 deploy-temporal-workers:
   stage: deploy
-  image: docker:20.10.16
-  services:
-    - name: docker:20.10.16-dind
-      command: ["--insecure-registry=git.home:5050"]
+  image: alpine/k8s:1.29.13
   variables:
-    DOCKER_TLS_CERTDIR: "/certs"
-    DOCKER_DRIVER: overlay2
-    DOCKER_HOST: tcp://docker:2376
-    DOCKER_TLS_VERIFY: 1
-    DOCKER_CERT_PATH: "/certs/client"
-    CI_REGISTRY: "http://git.home:5050"
+    K8S1: 192.168.69.80
   before_script:
-    - apk add --no-cache curl docker-cli
-    - curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-    - chmod +x kubectl
-    - mv kubectl /usr/local/bin/
-    - echo "$KUBE_CONFIG" | base64 -d > kubeconfig.yaml
-    - export KUBECONFIG=kubeconfig.yaml
-    # Configure Docker client
-    - mkdir -p /etc/docker
-    - |
-      cat > /etc/docker/daemon.json << EOF
-      {
-        "insecure-registries": ["git.home:5050"]
-      }
-      EOF
-    # Wait for Docker daemon to be ready
-    - |
-      for i in $(seq 1 30); do
-        if docker info > /dev/null 2>&1; then
-          break
-        fi
-        echo "Waiting for Docker daemon... ($i/30)"
-        sleep 1
-      done
-    # Configure Docker client to use HTTP
-    - |
-      cat > ~/.docker/config.json << EOF
-      {
-        "insecure-registries": ["git.home:5050"],
-        "auths": {}
-      }
-      EOF
-    # Test registry connection
-    - curl -v http://git.home:5050/v2/
-    # Login to GitLab registry using stdin for password
-    - echo "$CI_JOB_TOKEN" | docker login -u gitlab-ci-token --password-stdin git.home:5050
-    # Login to Docker Hub if credentials are provided
-    - |
-      if [ -n "$DOCKER_USERNAME" ] && [ -n "$DOCKER_PASSWORD" ]; then
-        echo "Logging into Docker Hub..."
-        echo "$DOCKER_PASSWORD" | docker login -u $DOCKER_USERNAME --password-stdin
-      fi
+    - apk --no-cache add openssh-client
   script:
-    # Build and push Python worker
-    - docker build -t git.home:5050/temporal/python-worker:${CI_COMMIT_SHA} workers/python
-    - docker push git.home:5050/temporal/python-worker:${CI_COMMIT_SHA}
-    - sed "s|\${REGISTRY}|git.home:5050/temporal|g" workers/k8s/python-worker.yaml | kubectl apply -f -
+    - mkdir ~/.kube
+    - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
+    - export KUBECONFIG=~/.kube/config
 
-    # Build and push TypeScript worker
-    - docker build -t git.home:5050/temporal/typescript-worker:${CI_COMMIT_SHA} workers/typescript
-    - docker push git.home:5050/temporal/typescript-worker:${CI_COMMIT_SHA}
-    - sed "s|\${REGISTRY}|git.home:5050/temporal|g" workers/k8s/typescript-worker.yaml | kubectl apply -f -
+    # Deploy Python worker
+    - sed "s|\${REGISTRY}|$REGISTRY_PATH|g" workers/k8s/python-worker.yaml | kubectl apply -f -
 
-    # Build and push C# worker
-    - docker build -t git.home:5050/temporal/csharp-worker:${CI_COMMIT_SHA} workers/csharp
-    - docker push git.home:5050/temporal/csharp-worker:${CI_COMMIT_SHA}
-    - sed "s|\${REGISTRY}|git.home:5050/temporal|g" workers/k8s/csharp-worker.yaml | kubectl apply -f -
+    # Deploy TypeScript worker
+    - sed "s|\${REGISTRY}|$REGISTRY_PATH|g" workers/k8s/typescript-worker.yaml | kubectl apply -f -
 
-    # Build and push Go worker
-    - docker build -t git.home:5050/temporal/go-worker:${CI_COMMIT_SHA} workers/go
-    - docker push git.home:5050/temporal/go-worker:${CI_COMMIT_SHA}
-    - sed "s|\${REGISTRY}|git.home:5050/temporal|g" workers/k8s/go-worker.yaml | kubectl apply -f -
+    # Deploy C# worker
+    - sed "s|\${REGISTRY}|$REGISTRY_PATH|g" workers/k8s/csharp-worker.yaml | kubectl apply -f -
+
+    # Deploy Go worker
+    - sed "s|\${REGISTRY}|$REGISTRY_PATH|g" workers/k8s/go-worker.yaml | kubectl apply -f -
 
     # Wait for all workers to be ready
     - kubectl rollout status deployment/python-worker -n temporal
@@ -399,3 +350,39 @@ destroy-cluster:
   rules:
   - when: manual
   needs: []
+
+build-python-worker:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  script:
+    - docker build -t $REGISTRY_PATH/python-worker:latest workers/python
+    - docker push $REGISTRY_PATH/python-worker:latest
+
+build-typescript-worker:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  script:
+    - docker build -t $REGISTRY_PATH/typescript-worker:latest workers/typescript
+    - docker push $REGISTRY_PATH/typescript-worker:latest
+
+build-csharp-worker:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  script:
+    - docker build -t $REGISTRY_PATH/csharp-worker:latest workers/csharp
+    - docker push $REGISTRY_PATH/csharp-worker:latest
+
+build-go-worker:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  script:
+    - docker build -t $REGISTRY_PATH/go-worker:latest workers/go
+    - docker push $REGISTRY_PATH/go-worker:latest

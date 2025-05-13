@@ -1,7 +1,7 @@
 using Temporalio.Client;
 using Temporalio.Worker;
-using TemporalWorker.Activities;
-using TemporalWorker.Workflows;
+using Temporalio.Activities;
+using Temporalio.Workflows;
 
 namespace TemporalWorker;
 
@@ -15,7 +15,7 @@ public class CSharpWorkflow
     }
 }
 
-public class Activities
+public static class ProcessActivities
 {
     [Activity]
     public static string ProcessCSharp(string message, string language)
