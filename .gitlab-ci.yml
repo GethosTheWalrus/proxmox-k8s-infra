@@ -329,7 +329,7 @@ deploy-temporal-workers:
     - export KUBECONFIG=~/.kube/config
 
     # Login to GitLab registry using HTTP
-    - echo "$GITLABACCESSTOKEN" | docker login -u $GITLABUSERNAME --password-stdin http://git.home:5050 --insecure
+    - echo "$GITLABACCESSTOKEN" | docker login -u $GITLABUSERNAME --password-stdin http://git.home:5050 --insecure 
 
     # Create GitLab registry secret
     - |
