@@ -41,6 +41,18 @@ build-python-worker:
   image: docker:20.10.16
   services:
     - docker:20.10.16-dind
+  before_script:
+    # Configure Docker to use insecure registry
+    - mkdir -p /etc/docker
+    - |
+      cat > /etc/docker/daemon.json << EOF
+      {
+        "insecure-registries": ["git.home:5050"]
+      }
+      EOF
+    # Restart Docker daemon to apply changes
+    - kill -HUP $(pidof dockerd)
+    - sleep 5
   script:
     - docker build -t $REGISTRY_PATH/python-worker:latest workers/python
     - docker push $REGISTRY_PATH/python-worker:latest
@@ -50,6 +62,18 @@ build-typescript-worker:
   image: docker:20.10.16
   services:
     - docker:20.10.16-dind
+  before_script:
+    # Configure Docker to use insecure registry
+    - mkdir -p /etc/docker
+    - |
+      cat > /etc/docker/daemon.json << EOF
+      {
+        "insecure-registries": ["git.home:5050"]
+      }
+      EOF
+    # Restart Docker daemon to apply changes
+    - kill -HUP $(pidof dockerd)
+    - sleep 5
   script:
     - docker build -t $REGISTRY_PATH/typescript-worker:latest workers/typescript
     - docker push $REGISTRY_PATH/typescript-worker:latest
@@ -59,6 +83,18 @@ build-csharp-worker:
   image: docker:20.10.16
   services:
     - docker:20.10.16-dind
+  before_script:
+    # Configure Docker to use insecure registry
+    - mkdir -p /etc/docker
+    - |
+      cat > /etc/docker/daemon.json << EOF
+      {
+        "insecure-registries": ["git.home:5050"]
+      }
+      EOF
+    # Restart Docker daemon to apply changes
+    - kill -HUP $(pidof dockerd)
+    - sleep 5
   script:
     - docker build -t $REGISTRY_PATH/csharp-worker:latest workers/csharp
     - docker push $REGISTRY_PATH/csharp-worker:latest
@@ -68,6 +104,18 @@ build-go-worker:
   image: docker:20.10.16
   services:
     - docker:20.10.16-dind
+  before_script:
+    # Configure Docker to use insecure registry
+    - mkdir -p /etc/docker
+    - |
+      cat > /etc/docker/daemon.json << EOF
+      {
+        "insecure-registries": ["git.home:5050"]
+      }
+      EOF
+    # Restart Docker daemon to apply changes
+    - kill -HUP $(pidof dockerd)
+    - sleep 5
   script:
     - docker build -t $REGISTRY_PATH/go-worker:latest workers/go
     - docker push $REGISTRY_PATH/go-worker:latest
