@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"log"
 	"os"
 	"os/signal"
@@ -10,8 +9,8 @@ import (
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
 
-	"temporal-worker/activities"
-	"temporal-worker/workflows"
+	"temporal-go-worker/activities"
+	"temporal-go-worker/workflows"
 )
 
 func main() {

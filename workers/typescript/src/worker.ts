@@ -1,5 +1,4 @@
-import { Worker } from '@temporalio/worker';
-import { NativeConnection } from '@temporalio/client';
+import { Worker, NativeConnection } from '@temporalio/worker';
 import * as activities from './activities';
 import { TypeScriptWorkflowImpl } from './workflows';
 import dotenv from 'dotenv';

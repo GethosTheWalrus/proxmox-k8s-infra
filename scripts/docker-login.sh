@@ -38,11 +38,60 @@ else
     echo "Docker is already installed."
 fi
 
-# Login to Docker Hub
-if [ -n "$DOCKER_USERNAME" ] && [ -n "$DOCKER_PASSWORD" ]; then
-    echo "Logging into Docker Hub..."
-    echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-else
-    echo "Docker credentials not provided"
+# Check if required variables are set
+if [ -z "$DOCKER_USERNAME" ] || [ -z "$DOCKER_PASSWORD" ]; then
+    echo "Error: DOCKER_USERNAME and DOCKER_PASSWORD must be set"
     exit 1
-fi 
+fi
+
+# Create Docker config directory if it doesn't exist
+mkdir -p /root/.docker
+
+# Create or update Docker config file
+cat > /root/.docker/config.json << EOF
+{
+  "auths": {
+    "https://index.docker.io/v1/": {
+      "auth": "$(echo -n "$DOCKER_USERNAME:$DOCKER_PASSWORD" | base64)"
+    },
+    "http://git.home:5050": {
+      "auth": "$(echo -n "$DOCKER_USERNAME:$DOCKER_PASSWORD" | base64)"
+    }
+  },
+  "insecure-registries": ["git.home:5050"]
+}
+EOF
+
+# Set proper permissions
+chmod 600 /root/.docker/config.json
+
+# Configure Docker daemon to use insecure registry
+mkdir -p /etc/docker
+cat > /etc/docker/daemon.json << EOF
+{
+  "insecure-registries": ["git.home:5050"]
+}
+EOF
+
+# Restart Docker daemon to apply changes
+if command -v systemctl &> /dev/null; then
+    systemctl restart docker
+elif command -v service &> /dev/null; then
+    service docker restart
+fi
+
+# Verify Docker Hub login
+echo "Verifying Docker Hub login..."
+docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD" || {
+    echo "Failed to login to Docker Hub"
+    exit 1
+}
+
+# Verify GitLab registry login
+echo "Verifying GitLab registry login..."
+docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD" http://git.home:5050 || {
+    echo "Failed to login to GitLab registry"
+    exit 1
+}
+
+echo "Successfully logged into Docker Hub and GitLab registry" 

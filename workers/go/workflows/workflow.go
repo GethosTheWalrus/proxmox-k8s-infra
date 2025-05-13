@@ -1,7 +1,7 @@
 package workflows
 
-import "go.temporal.io/sdk/workflow"
+import "context"
 
-func GoWorkflow(ctx workflow.Context, name string) (string, error) {
+func GoWorkflow(ctx context.Context, name string) (string, error) {
 	return "Hello from Go worker, " + name + "!", nil
 } 

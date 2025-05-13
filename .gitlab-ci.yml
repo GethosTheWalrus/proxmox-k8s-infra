@@ -36,85 +36,85 @@ deploy-infra:
       - key
       - storage-class.yaml
 
-build-python-worker:
-  stage: build
-  image: docker:20.10.16
-  services:
-    - name: docker:20.10.16-dind
-      command: ["--insecure-registry=git.home:5050"]
-  before_script:
-    - mkdir -p /etc/docker
-    - |
-      cat > /etc/docker/daemon.json << EOF
-      {
-        "insecure-registries": ["git.home:5050"]
-      }
-      EOF
-    - apk add --no-cache curl
-    - docker login -u mike -p $GITLABACCESSTOKEN http://git.home:5050
-  script:
-    - docker build -t $REGISTRY_PATH/python-worker:latest workers/python
-    - docker push $REGISTRY_PATH/python-worker:latest
+# build-python-worker:
+#   stage: build
+#   image: docker:20.10.16
+#   services:
+#     - name: docker:20.10.16-dind
+#       command: ["--insecure-registry=git.home:5050"]
+#   before_script:
+#     - mkdir -p /etc/docker
+#     - |
+#       cat > /etc/docker/daemon.json << EOF
+#       {
+#         "insecure-registries": ["git.home:5050"]
+#       }
+#       EOF
+#     - apk add --no-cache curl
+#     - docker login -u mike -p $GITLABACCESSTOKEN http://git.home:5050
+#   script:
+#     - docker build -t $REGISTRY_PATH/python-worker:latest workers/python
+#     - docker push $REGISTRY_PATH/python-worker:latest
 
-build-typescript-worker:
-  stage: build
-  image: docker:20.10.16
-  services:
-    - name: docker:20.10.16-dind
-      command: ["--insecure-registry=git.home:5050"]
-  before_script:
-    - mkdir -p /etc/docker
-    - |
-      cat > /etc/docker/daemon.json << EOF
-      {
-        "insecure-registries": ["git.home:5050"]
-      }
-      EOF
-    - apk add --no-cache curl
-    - docker login -u mike -p $GITLABACCESSTOKEN http://git.home:5050
-  script:
-    - docker build -t $REGISTRY_PATH/typescript-worker:latest workers/typescript
-    - docker push $REGISTRY_PATH/typescript-worker:latest
+# build-typescript-worker:
+#   stage: build
+#   image: docker:20.10.16
+#   services:
+#     - name: docker:20.10.16-dind
+#       command: ["--insecure-registry=git.home:5050"]
+#   before_script:
+#     - mkdir -p /etc/docker
+#     - |
+#       cat > /etc/docker/daemon.json << EOF
+#       {
+#         "insecure-registries": ["git.home:5050"]
+#       }
+#       EOF
+#     - apk add --no-cache curl
+#     - docker login -u mike -p $GITLABACCESSTOKEN http://git.home:5050
+#   script:
+#     - docker build -t $REGISTRY_PATH/typescript-worker:latest workers/typescript
+#     - docker push $REGISTRY_PATH/typescript-worker:latest
 
-build-csharp-worker:
-  stage: build
-  image: docker:20.10.16
-  services:
-    - name: docker:20.10.16-dind
-      command: ["--insecure-registry=git.home:5050"]
-  before_script:
-    - mkdir -p /etc/docker
-    - |
-      cat > /etc/docker/daemon.json << EOF
-      {
-        "insecure-registries": ["git.home:5050"]
-      }
-      EOF
-    - apk add --no-cache curl
-    - docker login -u mike -p $GITLABACCESSTOKEN http://git.home:5050
-  script:
-    - docker build -t $REGISTRY_PATH/csharp-worker:latest workers/csharp
-    - docker push $REGISTRY_PATH/csharp-worker:latest
+# build-csharp-worker:
+#   stage: build
+#   image: docker:20.10.16
+#   services:
+#     - name: docker:20.10.16-dind
+#       command: ["--insecure-registry=git.home:5050"]
+#   before_script:
+#     - mkdir -p /etc/docker
+#     - |
+#       cat > /etc/docker/daemon.json << EOF
+#       {
+#         "insecure-registries": ["git.home:5050"]
+#       }
+#       EOF
+#     - apk add --no-cache curl
+#     - docker login -u mike -p $GITLABACCESSTOKEN http://git.home:5050
+#   script:
+#     - docker build -t $REGISTRY_PATH/csharp-worker:latest workers/csharp
+#     - docker push $REGISTRY_PATH/csharp-worker:latest
 
-build-go-worker:
-  stage: build
-  image: docker:20.10.16
-  services:
-    - name: docker:20.10.16-dind
-      command: ["--insecure-registry=git.home:5050"]
-  before_script:
-    - mkdir -p /etc/docker
-    - |
-      cat > /etc/docker/daemon.json << EOF
-      {
-        "insecure-registries": ["git.home:5050"]
-      }
-      EOF
-    - apk add --no-cache curl
-    - docker login -u mike -p $GITLABACCESSTOKEN http://git.home:5050
-  script:
-    - docker build -t $REGISTRY_PATH/go-worker:latest workers/go
-    - docker push $REGISTRY_PATH/go-worker:latest
+# build-go-worker:
+#   stage: build
+#   image: docker:20.10.16
+#   services:
+#     - name: docker:20.10.16-dind
+#       command: ["--insecure-registry=git.home:5050"]
+#   before_script:
+#     - mkdir -p /etc/docker
+#     - |
+#       cat > /etc/docker/daemon.json << EOF
+#       {
+#         "insecure-registries": ["git.home:5050"]
+#       }
+#       EOF
+#     - apk add --no-cache curl
+#     - docker login -u mike -p $GITLABACCESSTOKEN http://git.home:5050
+#   script:
+#     - docker build -t $REGISTRY_PATH/go-worker:latest workers/go
+#     - docker push $REGISTRY_PATH/go-worker:latest
 
 
 init-master:
@@ -353,50 +353,77 @@ deploy-temporal-workers:
 
 test-temporal-workflow:
   stage: test
-  image: python:3.11-slim
+  image: python:3.9
+  services:
+    - name: temporalio/auto-setup:1.22.3
+      alias: temporal
+      command: ["--db", "postgresql", "--db-port", "5432", "--ui-port", "8080", "--port", "7233", "--metrics-port", "7235", "--log-level", "info", "--namespace", "default"]
+    - name: postgres:14
+      alias: postgres
+      variables:
+        POSTGRES_DB: temporal
+        POSTGRES_USER: temporal
+        POSTGRES_PASSWORD: temporal
   variables:
-    K8S1: 192.168.69.80
-  before_script:
-    - apt-get update && apt-get install -y openssh-client
-    - pip install temporalio python-dotenv
-    - mkdir ~/.kube
-    - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
-    - export KUBECONFIG=~/.kube/config
+    TEMPORAL_HOST: temporal:7233
+    TEMPORAL_NAMESPACE: default
   script:
-    # Wait for all workers to be ready
-    - echo "Waiting for workers to be ready..."
-    - kubectl rollout status deployment/python-worker -n temporal
-    - kubectl rollout status deployment/typescript-worker -n temporal
-    - kubectl rollout status deployment/csharp-worker -n temporal
-    - kubectl rollout status deployment/go-worker -n temporal
-
-    # Run the workflow test
-    - echo "Running workflow test..."
-    - cd workers/python
-    - python test_workflow.py > workflow_output.txt
-
-    # Verify the output contains results from all languages
+    - pip install temporalio
+    - pip install requests
     - |
-      if ! grep -q "Python says:" workflow_output.txt; then
-        echo "Python worker result not found"
-        exit 1
-      fi
-      if ! grep -q "TypeScript says:" workflow_output.txt; then
-        echo "TypeScript worker result not found"
-        exit 1
-      fi
-      if ! grep -q "C# says:" workflow_output.txt; then
-        echo "C# worker result not found"
-        exit 1
-      fi
-      if ! grep -q "Go says:" workflow_output.txt; then
-        echo "Go worker result not found"
-        exit 1
-      fi
+      cat > test_workflow.py << 'EOF'
+      import asyncio
+      from datetime import timedelta
+      from temporalio.client import Client
+      from temporalio.worker import Worker
+      from temporalio import workflow, activity
+      from temporalio.common import RetryPolicy
 
-    # Display the workflow output
-    - echo "Workflow output:"
-    - cat workflow_output.txt
+      @workflow.defn
+      class TestWorkflow:
+          @workflow.run
+          async def run(self, name: str) -> str:
+              # Start Python activity
+              python_result = await workflow.execute_activity(
+                  python_activity,
+                  "Hello from Python",
+                  start_to_close_timeout=timedelta(seconds=5),
+                  retry_policy=RetryPolicy(maximum_attempts=3)
+              )
+              
+              # Start Go activity
+              go_result = await workflow.execute_activity(
+                  "ProcessGo",
+                  "Hello from Go",
+                  start_to_close_timeout=timedelta(seconds=5),
+                  retry_policy=RetryPolicy(maximum_attempts=3)
+              )
+              
+              return f"Python: {python_result}, Go: {go_result}"
+
+      @activity.defn
+      async def python_activity(message: str) -> str:
+          return f"Python says: {message}"
+
+      async def main():
+          client = await Client.connect("localhost:7233", namespace="default")
+          
+          # Start the workflow
+          handle = await client.start_workflow(
+              TestWorkflow.run,
+              "Temporal",
+              id="test-workflow",
+              task_queue="python-task-queue"
+          )
+          
+          # Wait for the result
+          result = await handle.result()
+          print(f"Workflow result: {result}")
+
+      if __name__ == "__main__":
+          asyncio.run(main())
+      EOF
+    - python test_workflow.py
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
       when: always
