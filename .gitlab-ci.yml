@@ -310,11 +310,12 @@ deploy-temporal:
 
 deploy-temporal-workers:
   stage: deploy
-  image: alpine/k8s:1.29.13
+  image:
+    name: alpine/k8s:1.29.13
   variables:
     K8S1: 192.168.69.80
   before_script:
-    - apk --no-cache add openssh-client kubectl docker-cli
+    - apk --no-cache add openssh-client kubectl helm docker-cli
     # Configure Docker to use insecure registry
     - mkdir -p /etc/docker
     - |
@@ -323,23 +324,28 @@ deploy-temporal-workers:
         "insecure-registries": ["git.home:5050"]
       }
       EOF
-    # Configure Docker service to use insecure registry
-    - mkdir -p /etc/systemd/system/docker.service.d
+    # Login to GitLab registry
     - |
-      cat > /etc/systemd/system/docker.service.d/insecure-registry.conf << EOF
-      [Service]
-      ExecStart=
-      ExecStart=/usr/bin/dockerd --insecure-registry git.home:5050
-      EOF
-    # Restart Docker daemon to apply new configuration
-    - kill -HUP $(pidof dockerd) || true
+      if [ -n "$GITLABUSERNAME" ] && [ -n "$GITLABACCESSTOKEN" ]; then
+        echo "Attempting to login to GitLab registry..."
+        echo "Username: $GITLABUSERNAME"
+        echo "Password length: ${#GITLABACCESSTOKEN}"
+        # Try login with explicit registry
+        docker login git.home:5050 -u $GITLABUSERNAME -p $GITLABACCESSTOKEN
+        # If that fails, try without specifying registry
+        if [ $? -ne 0 ]; then
+          echo "First login attempt failed, trying alternative method..."
+          docker login -u $GITLABUSERNAME -p $GITLABACCESSTOKEN
+        fi
+      else
+        echo "GitLab credentials not provided"
+        echo "GITLABUSERNAME is set: $([ -n "$GITLABUSERNAME" ] && echo 'yes' || echo 'no')"
+        echo "GITLABACCESSTOKEN is set: $([ -n "$GITLABACCESSTOKEN" ] && echo 'yes' || echo 'no')"
+      fi
   script:
     - mkdir ~/.kube
     - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
     - export KUBECONFIG=~/.kube/config
-
-    # Login to GitLab registry using HTTP
-    - echo "$GITLABACCESSTOKEN" | docker login -u $GITLABUSERNAME --password-stdin git.home:5050
 
     # Create GitLab registry secret
     - |
