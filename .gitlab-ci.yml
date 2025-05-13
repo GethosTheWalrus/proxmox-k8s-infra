@@ -320,11 +320,16 @@ deploy-temporal-workers:
     - |
       cat > /etc/docker/daemon.json << EOF
       {
-        "insecure-registries": ["git.home:5050"],
-        "registry-mirrors": [],
-        "debug": true,
-        "experimental": false
+        "insecure-registries": ["git.home:5050"]
       }
+      EOF
+    # Configure Docker service to use insecure registry
+    - mkdir -p /etc/systemd/system/docker.service.d
+    - |
+      cat > /etc/systemd/system/docker.service.d/insecure-registry.conf << EOF
+      [Service]
+      ExecStart=
+      ExecStart=/usr/bin/dockerd --insecure-registry git.home:5050
       EOF
     # Restart Docker daemon to apply new configuration
     - kill -HUP $(pidof dockerd) || true
