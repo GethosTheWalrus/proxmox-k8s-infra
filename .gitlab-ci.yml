@@ -44,7 +44,8 @@ build-python-worker:
       command: ["--insecure-registry=git.home:5050"]
   script:
     - docker build -t $REGISTRY_PATH/python-worker:latest workers/python
-    - docker push $REGISTRY_PATH/python-worker:latest
+    - docker tag $REGISTRY_PATH/python-worker:latest http://$REGISTRY_PATH/python-worker:latest
+    - docker push http://$REGISTRY_PATH/python-worker:latest
 
 build-typescript-worker:
   stage: build
@@ -54,7 +55,8 @@ build-typescript-worker:
       command: ["--insecure-registry=git.home:5050"]
   script:
     - docker build -t $REGISTRY_PATH/typescript-worker:latest workers/typescript
-    - docker push $REGISTRY_PATH/typescript-worker:latest
+    - docker tag $REGISTRY_PATH/typescript-worker:latest http://$REGISTRY_PATH/typescript-worker:latest
+    - docker push http://$REGISTRY_PATH/typescript-worker:latest
 
 build-csharp-worker:
   stage: build
@@ -64,7 +66,8 @@ build-csharp-worker:
       command: ["--insecure-registry=git.home:5050"]
   script:
     - docker build -t $REGISTRY_PATH/csharp-worker:latest workers/csharp
-    - docker push $REGISTRY_PATH/csharp-worker:latest
+    - docker tag $REGISTRY_PATH/csharp-worker:latest http://$REGISTRY_PATH/csharp-worker:latest
+    - docker push http://$REGISTRY_PATH/csharp-worker:latest
 
 build-go-worker:
   stage: build
@@ -74,7 +77,8 @@ build-go-worker:
       command: ["--insecure-registry=git.home:5050"]
   script:
     - docker build -t $REGISTRY_PATH/go-worker:latest workers/go
-    - docker push $REGISTRY_PATH/go-worker:latest
+    - docker tag $REGISTRY_PATH/go-worker:latest http://$REGISTRY_PATH/go-worker:latest
+    - docker push http://$REGISTRY_PATH/go-worker:latest
 
 
 init-master:
