@@ -1,5 +1,5 @@
 variables:
-  REGISTRY_PATH: "git.home:5050/mike/proxmox-k8s-infra"
+  REGISTRY_PATH: ""
 
 stages:
   - build
@@ -36,86 +36,69 @@ deploy-infra:
       - key
       - storage-class.yaml
 
-# build-python-worker:
-#   stage: build
-#   image: docker:20.10.16
-#   services:
-#     - name: docker:20.10.16-dind
-#       command: ["--insecure-registry=git.home:5050"]
-#   before_script:
-#     - mkdir -p /etc/docker
-#     - |
-#       cat > /etc/docker/daemon.json << EOF
-#       {
-#         "insecure-registries": ["git.home:5050"]
-#       }
-#       EOF
-#     - apk add --no-cache curl
-#     - docker login -u mike -p $GITLABACCESSTOKEN http://git.home:5050
-#   script:
-#     - docker build -t $REGISTRY_PATH/python-worker:latest workers/python
-#     - docker push $REGISTRY_PATH/python-worker:latest
+build-python-worker:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  script:
+    - docker build -t python-worker:latest workers/python
+    - docker save python-worker:latest > python-worker.tar
+  artifacts:
+    paths:
+      - python-worker.tar
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: always
+    - when: manual
 
-# build-typescript-worker:
-#   stage: build
-#   image: docker:20.10.16
-#   services:
-#     - name: docker:20.10.16-dind
-#       command: ["--insecure-registry=git.home:5050"]
-#   before_script:
-#     - mkdir -p /etc/docker
-#     - |
-#       cat > /etc/docker/daemon.json << EOF
-#       {
-#         "insecure-registries": ["git.home:5050"]
-#       }
-#       EOF
-#     - apk add --no-cache curl
-#     - docker login -u mike -p $GITLABACCESSTOKEN http://git.home:5050
-#   script:
-#     - docker build -t $REGISTRY_PATH/typescript-worker:latest workers/typescript
-#     - docker push $REGISTRY_PATH/typescript-worker:latest
+build-typescript-worker:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  script:
+    - docker build -t typescript-worker:latest workers/typescript
+    - docker save typescript-worker:latest > typescript-worker.tar
+  artifacts:
+    paths:
+      - typescript-worker.tar
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: always
+    - when: manual
 
-# build-csharp-worker:
-#   stage: build
-#   image: docker:20.10.16
-#   services:
-#     - name: docker:20.10.16-dind
-#       command: ["--insecure-registry=git.home:5050"]
-#   before_script:
-#     - mkdir -p /etc/docker
-#     - |
-#       cat > /etc/docker/daemon.json << EOF
-#       {
-#         "insecure-registries": ["git.home:5050"]
-#       }
-#       EOF
-#     - apk add --no-cache curl
-#     - docker login -u mike -p $GITLABACCESSTOKEN http://git.home:5050
-#   script:
-#     - docker build -t $REGISTRY_PATH/csharp-worker:latest workers/csharp
-#     - docker push $REGISTRY_PATH/csharp-worker:latest
+build-csharp-worker:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  script:
+    - docker build -t csharp-worker:latest workers/csharp
+    - docker save csharp-worker:latest > csharp-worker.tar
+  artifacts:
+    paths:
+      - csharp-worker.tar
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: always
+    - when: manual
 
-# build-go-worker:
-#   stage: build
-#   image: docker:20.10.16
-#   services:
-#     - name: docker:20.10.16-dind
-#       command: ["--insecure-registry=git.home:5050"]
-#   before_script:
-#     - mkdir -p /etc/docker
-#     - |
-#       cat > /etc/docker/daemon.json << EOF
-#       {
-#         "insecure-registries": ["git.home:5050"]
-#       }
-#       EOF
-#     - apk add --no-cache curl
-#     - docker login -u mike -p $GITLABACCESSTOKEN http://git.home:5050
-#   script:
-#     - docker build -t $REGISTRY_PATH/go-worker:latest workers/go
-#     - docker push $REGISTRY_PATH/go-worker:latest
-
+build-go-worker:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  script:
+    - docker build -t go-worker:latest workers/go
+    - docker save go-worker:latest > go-worker.tar
+  artifacts:
+    paths:
+      - go-worker.tar
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: always
+    - when: manual
 
 init-master:
   stage: configure
@@ -167,7 +150,6 @@ init-workers:
   needs:
     - deploy-infra
     - init-master
-
 
 deploy-metallb:
   stage: deploy
@@ -316,54 +298,95 @@ deploy-temporal-workers:
     K8S1: 192.168.69.80
   before_script:
     - apk --no-cache add openssh-client kubectl helm docker-cli
-    # Configure Docker to use insecure registry
-    - mkdir -p /etc/docker
-    - |
-      cat > /etc/docker/daemon.json << EOF
-      {
-        "insecure-registries": ["git.home:5050"]
-      }
-      EOF
-    # Login to GitLab registry
-    - |
-      if [ -n "$GITLABUSERNAME" ] && [ -n "$GITLABACCESSTOKEN" ]; then
-        echo "Attempting to login to GitLab registry..."
-        echo "Username: $GITLABUSERNAME"
-        echo "Password length: ${#GITLABACCESSTOKEN}"
-        # Try login with explicit registry
-        docker login git.home:5050 -u $GITLABUSERNAME -p $GITLABACCESSTOKEN
-        # If that fails, try without specifying registry
-        if [ $? -ne 0 ]; then
-          echo "First login attempt failed, trying alternative method..."
-          docker login -u $GITLABUSERNAME -p $GITLABACCESSTOKEN
-        fi
-      else
-        echo "GitLab credentials not provided"
-        echo "GITLABUSERNAME is set: $([ -n "$GITLABUSERNAME" ] && echo 'yes' || echo 'no')"
-        echo "GITLABACCESSTOKEN is set: $([ -n "$GITLABACCESSTOKEN" ] && echo 'yes' || echo 'no')"
-      fi
   script:
     - mkdir ~/.kube
     - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
     - export KUBECONFIG=~/.kube/config
 
-    # Create GitLab registry secret
+    # Load the Docker images on the K8s nodes
     - |
-      kubectl create secret docker-registry gitlab-registry-secret \
-        --docker-server=git.home:5050 \
-        --docker-username=$GITLABUSERNAME \
-        --docker-password=$GITLABACCESSTOKEN \
-        --docker-email=$GITLAB_USER_EMAIL \
-        --namespace=temporal || true
+      for node in $K8S1 192.168.69.81 192.168.69.82 192.168.69.83; do
+        echo "Loading images on node $node..."
+        scp -i key -o StrictHostKeyChecking=no python-worker.tar typescript-worker.tar go-worker.tar k8s@"$node":~/
+        ssh -i key -o StrictHostKeyChecking=no k8s@"$node" "sudo docker load < python-worker.tar"
+        ssh -i key -o StrictHostKeyChecking=no k8s@"$node" "sudo docker load < typescript-worker.tar"
+        ssh -i key -o StrictHostKeyChecking=no k8s@"$node" "sudo docker load < go-worker.tar"
+      done
 
-    # Deploy Python worker
-    - sed "s|\${REGISTRY}|$REGISTRY_PATH|g" workers/k8s/python-worker.yaml | kubectl apply -f -
+    # Update the worker YAML files to use local images
+    - |
+      cat > workers/k8s/python-worker.yaml << EOF
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: python-worker
+        namespace: temporal
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: python-worker
+        template:
+          metadata:
+            labels:
+              app: python-worker
+          spec:
+            containers:
+            - name: worker
+              image: python-worker:latest
+              imagePullPolicy: Never
+      EOF
 
-    # Deploy TypeScript worker
-    - sed "s|\${REGISTRY}|$REGISTRY_PATH|g" workers/k8s/typescript-worker.yaml | kubectl apply -f -
+    - |
+      cat > workers/k8s/typescript-worker.yaml << EOF
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: typescript-worker
+        namespace: temporal
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: typescript-worker
+        template:
+          metadata:
+            labels:
+              app: typescript-worker
+          spec:
+            containers:
+            - name: worker
+              image: typescript-worker:latest
+              imagePullPolicy: Never
+      EOF
 
-    # Deploy Go worker
-    - sed "s|\${REGISTRY}|$REGISTRY_PATH|g" workers/k8s/go-worker.yaml | kubectl apply -f -
+    - |
+      cat > workers/k8s/go-worker.yaml << EOF
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: go-worker
+        namespace: temporal
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: go-worker
+        template:
+          metadata:
+            labels:
+              app: go-worker
+          spec:
+            containers:
+            - name: worker
+              image: go-worker:latest
+              imagePullPolicy: Never
+      EOF
+
+    # Deploy the workers
+    - kubectl apply -f workers/k8s/python-worker.yaml
+    - kubectl apply -f workers/k8s/typescript-worker.yaml
+    - kubectl apply -f workers/k8s/go-worker.yaml
 
     # Debug pod status
     - echo "Checking pod status..."
@@ -389,12 +412,14 @@ deploy-temporal-workers:
   environment:
     name: production
   needs:
+    - build-python-worker
+    - build-typescript-worker
+    - build-go-worker
     - init-master
     - init-workers
     - deploy-metallb
     - deploy-openebs
     - deploy-temporal
-
 
 test-temporal-workflow:
   stage: test
@@ -487,7 +512,6 @@ test-temporal-workflow:
   needs:
     - deploy-temporal
     - deploy-temporal-workers
-
 
 destroy-cluster:
   stage: destroy
