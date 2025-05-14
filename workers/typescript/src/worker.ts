@@ -7,7 +7,7 @@ dotenv.config();
 
 async function run() {
   const connection = await NativeConnection.connect({
-    address: process.env.TEMPORAL_HOST || 'temporal-frontend.temporal.svc.cluster.local:7233',
+    address: process.env.TEMPORAL_ADDRESS || 'temporal:7233',
   });
 
   const worker = await Worker.create({

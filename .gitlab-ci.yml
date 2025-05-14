@@ -59,26 +59,10 @@ build-typescript-worker:
     - docker:20.10.16-dind
   script:
     - docker build -t typescript-worker:latest workers/typescript
-    - docker save typescript-worker:latest > typescript-worker.tar
+    - docker save typescript-worker:latest | gzip > typescript-worker.tar.gz
   artifacts:
     paths:
-      - typescript-worker.tar
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-      when: always
-    - when: manual
-
-build-csharp-worker:
-  stage: build
-  image: docker:20.10.16
-  services:
-    - docker:20.10.16-dind
-  script:
-    - docker build -t csharp-worker:latest workers/csharp
-    - docker save csharp-worker:latest > csharp-worker.tar
-  artifacts:
-    paths:
-      - csharp-worker.tar
+      - typescript-worker.tar.gz
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
       when: always
@@ -95,6 +79,22 @@ build-go-worker:
   artifacts:
     paths:
       - go-worker.tar
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: always
+    - when: manual
+
+build-csharp-worker:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  script:
+    - docker build -t csharp-worker:latest workers/csharp
+    - docker save csharp-worker:latest | gzip > csharp-worker.tar.gz
+  artifacts:
+    paths:
+      - csharp-worker.tar.gz
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
       when: always
@@ -307,9 +307,10 @@ deploy-temporal-workers:
     - |
       for node in $K8S1 192.168.69.81 192.168.69.82 192.168.69.83; do
         echo "Loading images on node $node..."
-        scp -i key -o StrictHostKeyChecking=no python-worker.tar typescript-worker.tar go-worker.tar k8s@"$node":~/
+        scp -i key -o StrictHostKeyChecking=no python-worker.tar typescript-worker.tar.gz csharp-worker.tar.gz go-worker.tar k8s@"$node":~/
         ssh -i key -o StrictHostKeyChecking=no k8s@"$node" "sudo docker load < python-worker.tar"
-        ssh -i key -o StrictHostKeyChecking=no k8s@"$node" "sudo docker load < typescript-worker.tar"
+        ssh -i key -o StrictHostKeyChecking=no k8s@"$node" "sudo gunzip -c typescript-worker.tar.gz | sudo docker load"
+        ssh -i key -o StrictHostKeyChecking=no k8s@"$node" "sudo gunzip -c csharp-worker.tar.gz | sudo docker load"
         ssh -i key -o StrictHostKeyChecking=no k8s@"$node" "sudo docker load < go-worker.tar"
       done
 
@@ -361,6 +362,29 @@ deploy-temporal-workers:
       EOF
 
     - |
+      cat > workers/k8s/csharp-worker.yaml << EOF
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: csharp-worker
+        namespace: temporal
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: csharp-worker
+        template:
+          metadata:
+            labels:
+              app: csharp-worker
+          spec:
+            containers:
+            - name: worker
+              image: csharp-worker:latest
+              imagePullPolicy: Never
+      EOF
+
+    - |
       cat > workers/k8s/go-worker.yaml << EOF
       apiVersion: apps/v1
       kind: Deployment
@@ -386,6 +410,7 @@ deploy-temporal-workers:
     # Deploy the workers
     - kubectl apply -f workers/k8s/python-worker.yaml
     - kubectl apply -f workers/k8s/typescript-worker.yaml
+    - kubectl apply -f workers/k8s/csharp-worker.yaml
     - kubectl apply -f workers/k8s/go-worker.yaml
 
     # Debug pod status
@@ -396,7 +421,7 @@ deploy-temporal-workers:
 
     # Wait for deployments with timeout and debug
     - |
-      for deployment in python-worker typescript-worker go-worker; do
+      for deployment in python-worker typescript-worker csharp-worker go-worker; do
         echo "Waiting for $deployment deployment..."
         kubectl rollout status deployment/$deployment -n temporal --timeout=300s || {
           echo "Deployment $deployment failed to roll out. Checking pod status..."
@@ -414,6 +439,7 @@ deploy-temporal-workers:
   needs:
     - build-python-worker
     - build-typescript-worker
+    - build-csharp-worker
     - build-go-worker
     - init-master
     - init-workers

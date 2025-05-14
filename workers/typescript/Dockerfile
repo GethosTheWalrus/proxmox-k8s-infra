@@ -1,4 +1,5 @@
-FROM node:20-slim AS builder
+# Build stage
+FROM node:18-alpine AS builder
 
 WORKDIR /app
 
@@ -6,25 +7,30 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm install
+RUN npm ci
 
 # Copy source code
 COPY . .
 
-# Build TypeScript
+# Build TypeScript code
 RUN npm run build
 
 # Production stage
-FROM node:20-slim
+FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy built files and dependencies
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
+# Copy only production dependencies
 COPY package*.json ./
+RUN npm ci --only=production
 
-ENV TEMPORAL_HOST=temporal-frontend.temporal.svc.cluster.local:7233
+# Copy built files from builder stage
+COPY --from=builder /app/dist ./dist
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV TEMPORAL_ADDRESS=temporal:7233
 ENV TEMPORAL_NAMESPACE=default
 
+# Start the worker
 CMD ["node", "dist/worker.js"] 
