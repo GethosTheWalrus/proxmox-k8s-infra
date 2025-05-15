@@ -359,6 +359,9 @@ deploy-temporal-workers:
     - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
     - export KUBECONFIG=~/.kube/config
   script:
+    # Create k8s directory if it doesn't exist
+    - mkdir -p workers/k8s
+
     # Update the worker YAML files to use registry images
     - |
       cat > workers/k8s/python-worker.yaml << EOF
@@ -460,17 +463,23 @@ deploy-temporal-workers:
         --docker-password=$CI_REGISTRY_PASSWORD \
         --namespace=temporal || true
 
-    # Update deployments to use the image pull secret
-    - |
-      for worker in python typescript csharp go; do
-        kubectl patch deployment $worker-worker -n temporal -p '{"spec":{"template":{"spec":{"imagePullSecrets":[{"name":"gitlab-registry-secret"}]}}}}'
-      done
-
-    # Deploy the workers
+    # Deploy the workers first
+    - echo "Deploying workers..."
     - kubectl apply -f workers/k8s/python-worker.yaml
     - kubectl apply -f workers/k8s/typescript-worker.yaml
     - kubectl apply -f workers/k8s/csharp-worker.yaml
     - kubectl apply -f workers/k8s/go-worker.yaml
+
+    # Wait for deployments to be created
+    - echo "Waiting for deployments to be created..."
+    - sleep 10
+
+    # Now patch the deployments to use the image pull secret
+    - |
+      for worker in python typescript csharp go; do
+        echo "Patching $worker-worker deployment..."
+        kubectl patch deployment $worker-worker -n temporal -p '{"spec":{"template":{"spec":{"imagePullSecrets":[{"name":"gitlab-registry-secret"}]}}}}' || echo "Warning: Failed to patch $worker-worker deployment"
+      done
 
     # Debug pod status
     - echo "Checking pod status..."
