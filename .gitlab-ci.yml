@@ -298,21 +298,21 @@ deploy-temporal-workers:
   variables:
     K8S1: 192.168.69.80
   before_script:
-    - apk --no-cache add openssh-client kubectl helm docker-cli
+    - apk --no-cache add openssh-client kubectl helm docker-cli docker
   script:
     - mkdir ~/.kube
     - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
     - export KUBECONFIG=~/.kube/config
 
-    # Load the Docker images on the K8s nodes
+    # Load the Docker images on the K8s nodes using ssh to execute docker commands on the nodes
     - |
       for node in $K8S1 192.168.69.81 192.168.69.82 192.168.69.83; do
         echo "Loading images on node $node..."
         scp -i key -o StrictHostKeyChecking=no python-worker.tar typescript-worker.tar.gz csharp-worker.tar.gz go-worker.tar k8s@"$node":~/
-        ssh -i key -o StrictHostKeyChecking=no k8s@"$node" "sudo docker load < python-worker.tar"
-        ssh -i key -o StrictHostKeyChecking=no k8s@"$node" "sudo gunzip -c typescript-worker.tar.gz | sudo docker load"
-        ssh -i key -o StrictHostKeyChecking=no k8s@"$node" "sudo gunzip -c csharp-worker.tar.gz | sudo docker load"
-        ssh -i key -o StrictHostKeyChecking=no k8s@"$node" "sudo docker load < go-worker.tar"
+        ssh -i key -o StrictHostKeyChecking=no k8s@"$node" "docker load < python-worker.tar"
+        ssh -i key -o StrictHostKeyChecking=no k8s@"$node" "gunzip -c typescript-worker.tar.gz | docker load"
+        ssh -i key -o StrictHostKeyChecking=no k8s@"$node" "gunzip -c csharp-worker.tar.gz | docker load"
+        ssh -i key -o StrictHostKeyChecking=no k8s@"$node" "docker load < go-worker.tar"
       done
 
     # Update the worker YAML files to use local images
@@ -451,19 +451,9 @@ deploy-temporal-workers:
 test-temporal-workflow:
   stage: test
   image: python:3.9
-  services:
-    - name: temporalio/auto-setup:1.22.3
-      alias: temporal
-      command: ["--db", "postgresql", "--db-port", "5432", "--ui-port", "8080", "--port", "7233", "--metrics-port", "7235", "--log-level", "info", "--namespace", "default"]
-    - name: postgres:14
-      alias: postgres
-      variables:
-        POSTGRES_DB: temporal
-        POSTGRES_USER: temporal
-        POSTGRES_PASSWORD: temporal
   variables:
-    TEMPORAL_HOST: 192.168.69.98:7233
-    TEMPORAL_NAMESPACE: default
+    TEMPORAL_HOST: "192.168.69.98:7233"
+    TEMPORAL_NAMESPACE: "default"
   script:
     - pip install temporalio
     - pip install requests
@@ -511,8 +501,8 @@ test-temporal-workflow:
           return f"Python says: {message}"
 
       async def main():
-          # Use the service name instead of localhost
-          client = await Client.connect("temporal:7233", namespace="default")
+          # Use the environment variable for Temporal address
+          client = await Client.connect(os.environ["TEMPORAL_HOST"], namespace=os.environ["TEMPORAL_NAMESPACE"])
           
           # Start the workflow
           handle = await client.start_workflow(
@@ -527,6 +517,7 @@ test-temporal-workflow:
           print(f"Workflow result: {result}")
 
       if __name__ == "__main__":
+          import os
           asyncio.run(main())
       EOF
     - python test_workflow.py
