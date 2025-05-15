@@ -1,9 +1,5 @@
 import { Worker, NativeConnection } from '@temporalio/worker';
 import * as activities from './activities';
-import { TypeScriptWorkflowImpl } from './workflows';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 async function run() {
   const connection = await NativeConnection.connect({
@@ -14,7 +10,6 @@ async function run() {
     connection,
     namespace: process.env.TEMPORAL_NAMESPACE || 'default',
     taskQueue: 'typescript-task-queue',
-    workflowsPath: require.resolve('./workflows'),
     activities,
   });
 
