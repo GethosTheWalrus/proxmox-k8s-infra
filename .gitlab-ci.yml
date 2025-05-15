@@ -312,11 +312,18 @@ deploy-temporal-workers:
         # Copy the image files
         scp -i key -o StrictHostKeyChecking=no python-worker.tar typescript-worker.tar.gz csharp-worker.tar.gz go-worker.tar k8s@"$node":~/
         
+        # Install Docker if not already installed
+        ssh -i key -o StrictHostKeyChecking=no k8s@"$node" "sudo apt-get update && sudo apt-get install -y docker.io"
+        
+        # Start Docker service
+        ssh -i key -o StrictHostKeyChecking=no k8s@"$node" "sudo systemctl start docker"
+        ssh -i key -o StrictHostKeyChecking=no k8s@"$node" "sudo systemctl enable docker"
+        
         # Add k8s user to docker group and ensure proper permissions
         ssh -i key -o StrictHostKeyChecking=no k8s@"$node" "sudo usermod -aG docker k8s && sudo systemctl restart docker"
         
         # Wait for Docker to be ready
-        ssh -i key -o StrictHostKeyChecking=no k8s@"$node" "while ! docker ps > /dev/null 2>&1; do sleep 1; done"
+        ssh -i key -o StrictHostKeyChecking=no k8s@"$node" "while ! sudo docker ps > /dev/null 2>&1; do sleep 1; done"
         
         # Load images with sudo (in case group permissions haven't taken effect)
         echo "Loading Python worker on $node..."
