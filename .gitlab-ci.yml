@@ -12,6 +12,10 @@ build-python-worker:
   stage: build
   tags:
     - shell
+  variables:
+    SHELL: /bin/bash
+  before_script:
+    - source ~/.bashrc || true
   script:
     - cd workers/python
     - docker build -t ${REGISTRY_PATH}/python-worker:latest .
@@ -25,6 +29,10 @@ build-typescript-worker:
   stage: build
   tags:
     - shell
+  variables:
+    SHELL: /bin/bash
+  before_script:
+    - source ~/.bashrc || true
   script:
     - cd workers/typescript
     - docker build -t ${REGISTRY_PATH}/typescript-worker:latest .
@@ -38,6 +46,10 @@ build-csharp-worker:
   stage: build
   tags:
     - shell
+  variables:
+    SHELL: /bin/bash
+  before_script:
+    - source ~/.bashrc || true
   script:
     - cd workers/csharp
     - docker build -t ${REGISTRY_PATH}/csharp-worker:latest .
@@ -51,6 +63,10 @@ build-go-worker:
   stage: build
   tags:
     - shell
+  variables:
+    SHELL: /bin/bash
+  before_script:
+    - source ~/.bashrc || true
   script:
     - cd workers/go
     - docker build -t ${REGISTRY_PATH}/go-worker:latest .
@@ -61,7 +77,7 @@ build-go-worker:
     - when: manual
 
 deploy-infra:
-  stage: configure
+  stage: build
   image: 
     name: hashicorp/terraform:latest
     entrypoint: [""]
