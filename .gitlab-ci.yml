@@ -355,8 +355,8 @@ deploy-temporal-workers:
   before_script:
     - apt-get update
     - apt-get install -y openssh-client kubectl helm
-    - mkdir ~/.kube
-    - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
+    - mkdir -p ~/.kube  # Use -p to not fail if directory exists
+    - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config || true  # Don't fail if scp fails
     - export KUBECONFIG=~/.kube/config
   script:
     # Create k8s directory if it doesn't exist
@@ -364,128 +364,71 @@ deploy-temporal-workers:
 
     # Update the worker YAML files to use registry images
     - |
-      cat > workers/k8s/python-worker.yaml << EOF
+      set -e  # Exit on error for the script block
+      echo "Creating worker deployment manifests..."
+      
+      # Function to create deployment manifest
+      create_deployment_manifest() {
+        local worker=$1
+        local file="workers/k8s/${worker}-worker.yaml"
+        echo "Creating $file..."
+        cat > "$file" << EOF
       apiVersion: apps/v1
       kind: Deployment
       metadata:
-        name: python-worker
+        name: ${worker}-worker
         namespace: temporal
       spec:
         replicas: 1
         selector:
           matchLabels:
-            app: python-worker
+            app: ${worker}-worker
         template:
           metadata:
             labels:
-              app: python-worker
+              app: ${worker}-worker
           spec:
             containers:
             - name: worker
-              image: ${REGISTRY_PATH}/python-worker:latest
+              image: ${REGISTRY_PATH}/${worker}-worker:latest
               imagePullPolicy: Always
+            imagePullSecrets:
+            - name: gitlab-registry-secret
       EOF
+        echo "Created $file"
+      }
 
-    - |
-      cat > workers/k8s/typescript-worker.yaml << EOF
-      apiVersion: apps/v1
-      kind: Deployment
-      metadata:
-        name: typescript-worker
-        namespace: temporal
-      spec:
-        replicas: 1
-        selector:
-          matchLabels:
-            app: typescript-worker
-        template:
-          metadata:
-            labels:
-              app: typescript-worker
-          spec:
-            containers:
-            - name: worker
-              image: ${REGISTRY_PATH}/typescript-worker:latest
-              imagePullPolicy: Always
-      EOF
-
-    - |
-      cat > workers/k8s/csharp-worker.yaml << EOF
-      apiVersion: apps/v1
-      kind: Deployment
-      metadata:
-        name: csharp-worker
-        namespace: temporal
-      spec:
-        replicas: 1
-        selector:
-          matchLabels:
-            app: csharp-worker
-        template:
-          metadata:
-            labels:
-              app: csharp-worker
-          spec:
-            containers:
-            - name: worker
-              image: ${REGISTRY_PATH}/csharp-worker:latest
-              imagePullPolicy: Always
-      EOF
-
-    - |
-      cat > workers/k8s/go-worker.yaml << EOF
-      apiVersion: apps/v1
-      kind: Deployment
-      metadata:
-        name: go-worker
-        namespace: temporal
-      spec:
-        replicas: 1
-        selector:
-          matchLabels:
-            app: go-worker
-        template:
-          metadata:
-            labels:
-              app: go-worker
-          spec:
-            containers:
-            - name: worker
-              image: ${REGISTRY_PATH}/go-worker:latest
-              imagePullPolicy: Always
-      EOF
+      # Create manifests for all workers
+      for worker in python typescript csharp go; do
+        create_deployment_manifest "$worker"
+      done
 
     # Create image pull secret for the registry
     - |
+      echo "Creating registry secret..."
       kubectl create secret docker-registry gitlab-registry-secret \
         --docker-server=git.home:5050 \
         --docker-username=$CI_REGISTRY_USER \
         --docker-password=$CI_REGISTRY_PASSWORD \
         --namespace=temporal || true
 
-    # Deploy the workers first
-    - echo "Deploying workers..."
-    - kubectl apply -f workers/k8s/python-worker.yaml
-    - kubectl apply -f workers/k8s/typescript-worker.yaml
-    - kubectl apply -f workers/k8s/csharp-worker.yaml
-    - kubectl apply -f workers/k8s/go-worker.yaml
-
-    # Wait for deployments to be created
-    - echo "Waiting for deployments to be created..."
-    - sleep 10
-
-    # Now patch the deployments to use the image pull secret
+    # Deploy the workers
     - |
+      echo "Deploying workers..."
       for worker in python typescript csharp go; do
-        echo "Patching $worker-worker deployment..."
-        kubectl patch deployment $worker-worker -n temporal -p '{"spec":{"template":{"spec":{"imagePullSecrets":[{"name":"gitlab-registry-secret"}]}}}}' || echo "Warning: Failed to patch $worker-worker deployment"
+        echo "Deploying $worker-worker..."
+        kubectl apply -f "workers/k8s/${worker}-worker.yaml" || {
+          echo "Failed to deploy $worker-worker"
+          exit 1
+        }
       done
 
     # Debug pod status
-    - echo "Checking pod status..."
-    - kubectl get pods -n temporal
-    - echo "Checking pod events..."
-    - kubectl get events -n temporal --sort-by='.lastTimestamp'
+    - |
+      echo "Checking pod status..."
+      kubectl get pods -n temporal
+      echo "Checking pod events..."
+      kubectl get events -n temporal --sort-by='.lastTimestamp'
 
     # Wait for deployments with timeout and debug
     - |
