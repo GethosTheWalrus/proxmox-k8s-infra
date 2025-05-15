@@ -27,14 +27,24 @@ public class Program
             LoggerFactory = loggerFactory,
         });
 
+        // Create cancellation token source for graceful shutdown
+        using var cts = new CancellationTokenSource();
+
         // Create worker
         using var worker = new TemporalWorker(
             client,
             new TemporalWorkerOptions("csharp-task-queue").
                 AddActivity(Activities.ProcessCSharp));
 
-        // Run worker until cancelled
-        Console.WriteLine("Worker starting...");
-        await worker.ExecuteAsync();
+        try
+        {
+            // Run worker until cancelled
+            Console.WriteLine("Worker starting...");
+            await worker.ExecuteAsync(cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            Console.WriteLine("Worker shutting down...");
+        }
     }
 } 
