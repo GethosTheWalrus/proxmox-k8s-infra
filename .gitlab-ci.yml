@@ -41,6 +41,8 @@ build-typescript-worker:
     - if: $CI_COMMIT_BRANCH == "main"
       when: always
     - when: manual
+  needs:
+    - build-python-worker
 
 build-csharp-worker:
   stage: build
@@ -58,6 +60,8 @@ build-csharp-worker:
     - if: $CI_COMMIT_BRANCH == "main"
       when: always
     - when: manual
+  needs:
+    - build-typescript-worker
 
 build-go-worker:
   stage: build
@@ -75,6 +79,8 @@ build-go-worker:
     - if: $CI_COMMIT_BRANCH == "main"
       when: always
     - when: manual
+  needs:
+    - build-csharp-worker
 
 deploy-infra:
   stage: build
