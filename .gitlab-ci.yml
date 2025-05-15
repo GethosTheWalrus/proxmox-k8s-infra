@@ -1,5 +1,5 @@
 variables:
-  REGISTRY_PATH: ""
+  REGISTRY_PATH: "git.home:5050/mike/proxmox-k8s-infra"
 
 stages:
   - build
@@ -8,8 +8,60 @@ stages:
   - test
   - destroy
 
-deploy-infra:
+build-python-worker:
   stage: build
+  tags:
+    - shell
+  script:
+    - cd workers/python
+    - docker build -t ${REGISTRY_PATH}/python-worker:latest .
+    - docker push ${REGISTRY_PATH}/python-worker:latest
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: always
+    - when: manual
+
+build-typescript-worker:
+  stage: build
+  tags:
+    - shell
+  script:
+    - cd workers/typescript
+    - docker build -t ${REGISTRY_PATH}/typescript-worker:latest .
+    - docker push ${REGISTRY_PATH}/typescript-worker:latest
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: always
+    - when: manual
+
+build-csharp-worker:
+  stage: build
+  tags:
+    - shell
+  script:
+    - cd workers/csharp
+    - docker build -t ${REGISTRY_PATH}/csharp-worker:latest .
+    - docker push ${REGISTRY_PATH}/csharp-worker:latest
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: always
+    - when: manual
+
+build-go-worker:
+  stage: build
+  tags:
+    - shell
+  script:
+    - cd workers/go
+    - docker build -t ${REGISTRY_PATH}/go-worker:latest .
+    - docker push ${REGISTRY_PATH}/go-worker:latest
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: always
+    - when: manual
+
+deploy-infra:
+  stage: configure
   image: 
     name: hashicorp/terraform:latest
     entrypoint: [""]
@@ -35,71 +87,6 @@ deploy-infra:
       - scripts
       - key
       - storage-class.yaml
-
-build-python-worker:
-  stage: build
-  image: docker:20.10.16
-  services:
-    - docker:20.10.16-dind
-  script:
-    - docker build -t python-worker:latest workers/python
-    - docker save python-worker:latest > python-worker.tar
-  artifacts:
-    paths:
-      - python-worker.tar
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-      when: always
-    - when: manual
-
-build-typescript-worker:
-  stage: build
-  image: docker:20.10.16
-  services:
-    - docker:20.10.16-dind
-  script:
-    - docker build -t typescript-worker:latest workers/typescript
-    - docker save typescript-worker:latest | gzip -9 > typescript-worker.tar.gz
-  artifacts:
-    paths:
-      - typescript-worker.tar.gz
-    expire_in: 1 day
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-      when: always
-    - when: manual
-
-build-go-worker:
-  stage: build
-  image: docker:20.10.16
-  services:
-    - docker:20.10.16-dind
-  script:
-    - docker build -t go-worker:latest workers/go
-    - docker save go-worker:latest > go-worker.tar
-  artifacts:
-    paths:
-      - go-worker.tar
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-      when: always
-    - when: manual
-
-build-csharp-worker:
-  stage: build
-  image: docker:20.10.16
-  services:
-    - docker:20.10.16-dind
-  script:
-    - docker build -t csharp-worker:latest workers/csharp
-    - docker save csharp-worker:latest | gzip > csharp-worker.tar.gz
-  artifacts:
-    paths:
-      - csharp-worker.tar.gz
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-      when: always
-    - when: manual
 
 init-master:
   stage: configure
@@ -293,57 +280,17 @@ deploy-temporal:
 
 deploy-temporal-workers:
   stage: deploy
-  image:
-    name: alpine/k8s:1.29.13
+  tags:
+    - shell
   variables:
     K8S1: 192.168.69.80
   before_script:
-    - apk --no-cache add openssh-client kubectl helm docker-cli docker
-  script:
+    - apk --no-cache add openssh-client kubectl helm
     - mkdir ~/.kube
     - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
     - export KUBECONFIG=~/.kube/config
-
-    # Load the Docker images on the K8s nodes using ssh to execute docker commands on the nodes
-    - |
-      for node in $K8S1 192.168.69.81 192.168.69.82 192.168.69.83; do
-        echo "Loading images on node $node..."
-        
-        # Copy the image files
-        scp -i key -o StrictHostKeyChecking=no python-worker.tar typescript-worker.tar.gz csharp-worker.tar.gz go-worker.tar k8s@"$node":~/
-        
-        # Install Docker if not already installed
-        ssh -i key -o StrictHostKeyChecking=no k8s@"$node" "sudo apt-get update && sudo apt-get install -y docker.io"
-        
-        # Start Docker service
-        ssh -i key -o StrictHostKeyChecking=no k8s@"$node" "sudo systemctl start docker"
-        ssh -i key -o StrictHostKeyChecking=no k8s@"$node" "sudo systemctl enable docker"
-        
-        # Add k8s user to docker group and ensure proper permissions
-        ssh -i key -o StrictHostKeyChecking=no k8s@"$node" "sudo usermod -aG docker k8s && sudo systemctl restart docker"
-        
-        # Wait for Docker to be ready
-        ssh -i key -o StrictHostKeyChecking=no k8s@"$node" "while ! sudo docker ps > /dev/null 2>&1; do sleep 1; done"
-        
-        # Load images with sudo (in case group permissions haven't taken effect)
-        echo "Loading Python worker on $node..."
-        ssh -i key -o StrictHostKeyChecking=no k8s@"$node" "sudo docker load < python-worker.tar"
-        
-        echo "Loading TypeScript worker on $node..."
-        ssh -i key -o StrictHostKeyChecking=no k8s@"$node" "sudo gunzip -c typescript-worker.tar.gz | sudo docker load"
-        
-        echo "Loading C# worker on $node..."
-        ssh -i key -o StrictHostKeyChecking=no k8s@"$node" "sudo gunzip -c csharp-worker.tar.gz | sudo docker load"
-        
-        echo "Loading Go worker on $node..."
-        ssh -i key -o StrictHostKeyChecking=no k8s@"$node" "sudo docker load < go-worker.tar"
-        
-        # Verify images are loaded
-        echo "Verifying images on $node..."
-        ssh -i key -o StrictHostKeyChecking=no k8s@"$node" "sudo docker images"
-      done
-
-    # Update the worker YAML files to use local images
+  script:
+    # Update the worker YAML files to use registry images
     - |
       cat > workers/k8s/python-worker.yaml << EOF
       apiVersion: apps/v1
@@ -363,8 +310,8 @@ deploy-temporal-workers:
           spec:
             containers:
             - name: worker
-              image: python-worker:latest
-              imagePullPolicy: Never
+              image: ${REGISTRY_PATH}/python-worker:latest
+              imagePullPolicy: Always
       EOF
 
     - |
@@ -386,8 +333,8 @@ deploy-temporal-workers:
           spec:
             containers:
             - name: worker
-              image: typescript-worker:latest
-              imagePullPolicy: Never
+              image: ${REGISTRY_PATH}/typescript-worker:latest
+              imagePullPolicy: Always
       EOF
 
     - |
@@ -409,8 +356,8 @@ deploy-temporal-workers:
           spec:
             containers:
             - name: worker
-              image: csharp-worker:latest
-              imagePullPolicy: Never
+              image: ${REGISTRY_PATH}/csharp-worker:latest
+              imagePullPolicy: Always
       EOF
 
     - |
@@ -432,9 +379,23 @@ deploy-temporal-workers:
           spec:
             containers:
             - name: worker
-              image: go-worker:latest
-              imagePullPolicy: Never
+              image: ${REGISTRY_PATH}/go-worker:latest
+              imagePullPolicy: Always
       EOF
+
+    # Create image pull secret for the registry
+    - |
+      kubectl create secret docker-registry gitlab-registry-secret \
+        --docker-server=git.home:5050 \
+        --docker-username=$CI_REGISTRY_USER \
+        --docker-password=$CI_REGISTRY_PASSWORD \
+        --namespace=temporal || true
+
+    # Update deployments to use the image pull secret
+    - |
+      for worker in python typescript csharp go; do
+        kubectl patch deployment $worker-worker -n temporal -p '{"spec":{"template":{"spec":{"imagePullSecrets":[{"name":"gitlab-registry-secret"}]}}}}'
+      done
 
     # Deploy the workers
     - kubectl apply -f workers/k8s/python-worker.yaml
