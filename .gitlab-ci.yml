@@ -15,14 +15,15 @@ build-python-worker:
   variables:
     SHELL: /bin/bash
   before_script:
-    - echo "Current user: $(whoami)"
-    - echo "Current directory: $(pwd)"
-    - echo "Environment variables:"
-    - env | sort
-    - source ~/.bashrc || true
-    - echo "PATH: $PATH"
-    - which docker || echo "Docker not found"
-    - docker info || echo "Docker not accessible"
+    - |
+      echo "Current user: $(whoami)"
+      echo "Current directory: $(pwd)"
+      echo "Environment variables:"
+      env | sort
+      source ~/.bashrc || true
+      echo "PATH: $PATH"
+      which docker || echo "Docker not found"
+      docker info || echo "Docker not accessible"
   script:
     - cd workers/python
     - docker build -t ${REGISTRY_PATH}/python-worker:latest .
@@ -44,14 +45,15 @@ build-typescript-worker:
   variables:
     SHELL: /bin/bash
   before_script:
-    - echo "Current user: $(whoami)"
-    - echo "Current directory: $(pwd)"
-    - echo "Environment variables:"
-    - env | sort
-    - source ~/.bashrc || true
-    - echo "PATH: $PATH"
-    - which docker || echo "Docker not found"
-    - docker info || echo "Docker not accessible"
+    - |
+      echo "Current user: $(whoami)"
+      echo "Current directory: $(pwd)"
+      echo "Environment variables:"
+      env | sort
+      source ~/.bashrc || true
+      echo "PATH: $PATH"
+      which docker || echo "Docker not found"
+      docker info || echo "Docker not accessible"
   script:
     - cd workers/typescript
     - docker build -t ${REGISTRY_PATH}/typescript-worker:latest .
@@ -73,14 +75,15 @@ build-csharp-worker:
   variables:
     SHELL: /bin/bash
   before_script:
-    - echo "Current user: $(whoami)"
-    - echo "Current directory: $(pwd)"
-    - echo "Environment variables:"
-    - env | sort
-    - source ~/.bashrc || true
-    - echo "PATH: $PATH"
-    - which docker || echo "Docker not found"
-    - docker info || echo "Docker not accessible"
+    - |
+      echo "Current user: $(whoami)"
+      echo "Current directory: $(pwd)"
+      echo "Environment variables:"
+      env | sort
+      source ~/.bashrc || true
+      echo "PATH: $PATH"
+      which docker || echo "Docker not found"
+      docker info || echo "Docker not accessible"
   script:
     - cd workers/csharp
     - docker build -t ${REGISTRY_PATH}/csharp-worker:latest .
@@ -102,14 +105,15 @@ build-go-worker:
   variables:
     SHELL: /bin/bash
   before_script:
-    - echo "Current user: $(whoami)"
-    - echo "Current directory: $(pwd)"
-    - echo "Environment variables:"
-    - env | sort
-    - source ~/.bashrc || true
-    - echo "PATH: $PATH"
-    - which docker || echo "Docker not found"
-    - docker info || echo "Docker not accessible"
+    - |
+      echo "Current user: $(whoami)"
+      echo "Current directory: $(pwd)"
+      echo "Environment variables:"
+      env | sort
+      source ~/.bashrc || true
+      echo "PATH: $PATH"
+      which docker || echo "Docker not found"
+      docker info || echo "Docker not accessible"
   script:
     - cd workers/go
     - docker build -t ${REGISTRY_PATH}/go-worker:latest .
