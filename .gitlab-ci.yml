@@ -59,10 +59,11 @@ build-typescript-worker:
     - docker:20.10.16-dind
   script:
     - docker build -t typescript-worker:latest workers/typescript
-    - docker save typescript-worker:latest | gzip > typescript-worker.tar.gz
+    - docker save typescript-worker:latest | gzip -9 > typescript-worker.tar.gz
   artifacts:
     paths:
       - typescript-worker.tar.gz
+    expire_in: 1 day
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
       when: always

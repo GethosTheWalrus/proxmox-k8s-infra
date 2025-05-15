@@ -1,31 +1,36 @@
 # Build stage
 FROM node:18-alpine AS builder
-
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Only copy package files needed for build
+COPY package.json ./
 
 # Install dependencies
-RUN npm install
+RUN npm install --no-package-lock
 
-# Copy source code
-COPY . .
+# Copy only the TypeScript source and config
+COPY tsconfig.json ./
+COPY src ./src
 
 # Build TypeScript code
 RUN npm run build
 
-# Production stage
-FROM node:18-alpine
+# Clean build stage
+FROM node:18-alpine AS deps
+WORKDIR /app
+COPY package.json ./
 
+# Install only production dependencies with minimal extras
+RUN npm install --omit=dev --no-package-lock --no-audit --no-fund
+
+# Final stage
+FROM node:18-alpine
 WORKDIR /app
 
-# Copy package files and install production dependencies
-COPY package.json ./
-RUN npm install --omit=dev
-
-# Copy built files from builder stage
+# Copy only the built JavaScript files and production dependencies
 COPY --from=builder /app/dist ./dist
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json ./
 
 # Set environment variables
 ENV NODE_ENV=production
