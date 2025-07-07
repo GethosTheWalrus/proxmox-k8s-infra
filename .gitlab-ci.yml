@@ -8,125 +8,125 @@ stages:
   - test
   - destroy
 
-build-python-worker:
-  stage: build
-  tags:
-    - shell
-  variables:
-    SHELL: /bin/bash
-  before_script:
-    - |
-      echo "Current user: $(whoami)"
-      echo "Current directory: $(pwd)"
-      echo "Environment variables:"
-      env | sort
-      source ~/.bashrc || true
-      echo "PATH: $PATH"
-      which docker || echo "Docker not found"
-      docker info || echo "Docker not accessible"
-  script:
-    - cd workers/python
-    - docker build -t ${REGISTRY_PATH}/python-worker:latest .
-    - docker push ${REGISTRY_PATH}/python-worker:latest
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-      when: always
-    - when: manual
-  retry:
-    max: 2
-    when:
-      - runner_system_failure
-      - stuck_or_timeout_failure
+# build-python-worker:
+#   stage: build
+#   tags:
+#     - shell
+#   variables:
+#     SHELL: /bin/bash
+#   before_script:
+#     - |
+#       echo "Current user: $(whoami)"
+#       echo "Current directory: $(pwd)"
+#       echo "Environment variables:"
+#       env | sort
+#       source ~/.bashrc || true
+#       echo "PATH: $PATH"
+#       which docker || echo "Docker not found"
+#       docker info || echo "Docker not accessible"
+#   script:
+#     - cd workers/python
+#     - docker build -t ${REGISTRY_PATH}/python-worker:latest .
+#     - docker push ${REGISTRY_PATH}/python-worker:latest
+#   rules:
+#     - if: $CI_COMMIT_BRANCH == "main"
+#       when: always
+#     - when: manual
+#   retry:
+#     max: 2
+#     when:
+#       - runner_system_failure
+#       - stuck_or_timeout_failure
 
-build-typescript-worker:
-  stage: build
-  tags:
-    - shell
-  variables:
-    SHELL: /bin/bash
-  before_script:
-    - |
-      echo "Current user: $(whoami)"
-      echo "Current directory: $(pwd)"
-      echo "Environment variables:"
-      env | sort
-      source ~/.bashrc || true
-      echo "PATH: $PATH"
-      which docker || echo "Docker not found"
-      docker info || echo "Docker not accessible"
-  script:
-    - cd workers/typescript
-    - docker build -t ${REGISTRY_PATH}/typescript-worker:latest .
-    - docker push ${REGISTRY_PATH}/typescript-worker:latest
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-      when: always
-    - when: manual
-  retry:
-    max: 2
-    when:
-      - runner_system_failure
-      - stuck_or_timeout_failure
+# build-typescript-worker:
+#   stage: build
+#   tags:
+#     - shell
+#   variables:
+#     SHELL: /bin/bash
+#   before_script:
+#     - |
+#       echo "Current user: $(whoami)"
+#       echo "Current directory: $(pwd)"
+#       echo "Environment variables:"
+#       env | sort
+#       source ~/.bashrc || true
+#       echo "PATH: $PATH"
+#       which docker || echo "Docker not found"
+#       docker info || echo "Docker not accessible"
+#   script:
+#     - cd workers/typescript
+#     - docker build -t ${REGISTRY_PATH}/typescript-worker:latest .
+#     - docker push ${REGISTRY_PATH}/typescript-worker:latest
+#   rules:
+#     - if: $CI_COMMIT_BRANCH == "main"
+#       when: always
+#     - when: manual
+#   retry:
+#     max: 2
+#     when:
+#       - runner_system_failure
+#       - stuck_or_timeout_failure
 
-build-csharp-worker:
-  stage: build
-  tags:
-    - shell
-  variables:
-    SHELL: /bin/bash
-  before_script:
-    - |
-      echo "Current user: $(whoami)"
-      echo "Current directory: $(pwd)"
-      echo "Environment variables:"
-      env | sort
-      source ~/.bashrc || true
-      echo "PATH: $PATH"
-      which docker || echo "Docker not found"
-      docker info || echo "Docker not accessible"
-  script:
-    - cd workers/csharp
-    - docker build -t ${REGISTRY_PATH}/csharp-worker:latest .
-    - docker push ${REGISTRY_PATH}/csharp-worker:latest
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-      when: always
-    - when: manual
-  retry:
-    max: 2
-    when:
-      - runner_system_failure
-      - stuck_or_timeout_failure
+# build-csharp-worker:
+#   stage: build
+#   tags:
+#     - shell
+#   variables:
+#     SHELL: /bin/bash
+#   before_script:
+#     - |
+#       echo "Current user: $(whoami)"
+#       echo "Current directory: $(pwd)"
+#       echo "Environment variables:"
+#       env | sort
+#       source ~/.bashrc || true
+#       echo "PATH: $PATH"
+#       which docker || echo "Docker not found"
+#       docker info || echo "Docker not accessible"
+#   script:
+#     - cd workers/csharp
+#     - docker build -t ${REGISTRY_PATH}/csharp-worker:latest .
+#     - docker push ${REGISTRY_PATH}/csharp-worker:latest
+#   rules:
+#     - if: $CI_COMMIT_BRANCH == "main"
+#       when: always
+#     - when: manual
+#   retry:
+#     max: 2
+#     when:
+#       - runner_system_failure
+#       - stuck_or_timeout_failure
 
-build-go-worker:
-  stage: build
-  tags:
-    - shell
-  variables:
-    SHELL: /bin/bash
-  before_script:
-    - |
-      echo "Current user: $(whoami)"
-      echo "Current directory: $(pwd)"
-      echo "Environment variables:"
-      env | sort
-      source ~/.bashrc || true
-      echo "PATH: $PATH"
-      which docker || echo "Docker not found"
-      docker info || echo "Docker not accessible"
-  script:
-    - cd workers/go
-    - docker build -t ${REGISTRY_PATH}/go-worker:latest .
-    - docker push ${REGISTRY_PATH}/go-worker:latest
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-      when: always
-    - when: manual
-  retry:
-    max: 2
-    when:
-      - runner_system_failure
-      - stuck_or_timeout_failure
+# build-go-worker:
+#   stage: build
+#   tags:
+#     - shell
+#   variables:
+#     SHELL: /bin/bash
+#   before_script:
+#     - |
+#       echo "Current user: $(whoami)"
+#       echo "Current directory: $(pwd)"
+#       echo "Environment variables:"
+#       env | sort
+#       source ~/.bashrc || true
+#       echo "PATH: $PATH"
+#       which docker || echo "Docker not found"
+#       docker info || echo "Docker not accessible"
+#   script:
+#     - cd workers/go
+#     - docker build -t ${REGISTRY_PATH}/go-worker:latest .
+#     - docker push ${REGISTRY_PATH}/go-worker:latest
+#   rules:
+#     - if: $CI_COMMIT_BRANCH == "main"
+#       when: always
+#     - when: manual
+#   retry:
+#     max: 2
+#     when:
+#       - runner_system_failure
+#       - stuck_or_timeout_failure
 
 deploy-infra:
   stage: build
@@ -346,117 +346,117 @@ deploy-temporal:
     - deploy-metallb
     - deploy-openebs
 
-deploy-temporal-workers:
-  stage: deploy
-  tags:
-    - shell
-  variables:
-    K8S1: 192.168.69.80
-  before_script:
-    - apt-get update
-    - apt-get install -y openssh-client kubectl helm
-    - mkdir -p ~/.kube  # Use -p to not fail if directory exists
-    - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config || true  # Don't fail if scp fails
-    - export KUBECONFIG=~/.kube/config
-  script:
-    # Create k8s directory if it doesn't exist
-    - mkdir -p workers/k8s
+# deploy-temporal-workers:
+#   stage: deploy
+#   tags:
+#     - shell
+#   variables:
+#     K8S1: 192.168.69.80
+#   before_script:
+#     - apt-get update
+#     - apt-get install -y openssh-client kubectl helm
+#     - mkdir -p ~/.kube  # Use -p to not fail if directory exists
+#     - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config || true  # Don't fail if scp fails
+#     - export KUBECONFIG=~/.kube/config
+#   script:
+#     # Create k8s directory if it doesn't exist
+#     - mkdir -p workers/k8s
 
-    # Update the worker YAML files to use registry images
-    - |
-      set -e  # Exit on error for the script block
-      echo "Creating worker deployment manifests..."
+#     # Update the worker YAML files to use registry images
+#     - |
+#       set -e  # Exit on error for the script block
+#       echo "Creating worker deployment manifests..."
       
-      # Function to create deployment manifest
-      create_deployment_manifest() {
-        local worker=$1
-        local file="workers/k8s/${worker}-worker.yaml"
-        echo "Creating $file..."
-        cat > "$file" << EOF
-      apiVersion: apps/v1
-      kind: Deployment
-      metadata:
-        name: ${worker}-worker
-        namespace: temporal
-      spec:
-        replicas: 1
-        selector:
-          matchLabels:
-            app: ${worker}-worker
-        template:
-          metadata:
-            labels:
-              app: ${worker}-worker
-          spec:
-            containers:
-            - name: worker
-              image: ${REGISTRY_PATH}/${worker}-worker:latest
-              imagePullPolicy: Always
-            imagePullSecrets:
-            - name: gitlab-registry-secret
-      EOF
-        echo "Created $file"
-      }
+#       # Function to create deployment manifest
+#       create_deployment_manifest() {
+#         local worker=$1
+#         local file="workers/k8s/${worker}-worker.yaml"
+#         echo "Creating $file..."
+#         cat > "$file" << EOF
+#       apiVersion: apps/v1
+#       kind: Deployment
+#       metadata:
+#         name: ${worker}-worker
+#         namespace: temporal
+#       spec:
+#         replicas: 1
+#         selector:
+#           matchLabels:
+#             app: ${worker}-worker
+#         template:
+#           metadata:
+#             labels:
+#               app: ${worker}-worker
+#           spec:
+#             containers:
+#             - name: worker
+#               image: ${REGISTRY_PATH}/${worker}-worker:latest
+#               imagePullPolicy: Always
+#             imagePullSecrets:
+#             - name: gitlab-registry-secret
+#       EOF
+#         echo "Created $file"
+#       }
 
-      # Create manifests for all workers
-      for worker in python typescript csharp go; do
-        create_deployment_manifest "$worker"
-      done
+#       # Create manifests for all workers
+#       for worker in python typescript csharp go; do
+#         create_deployment_manifest "$worker"
+#       done
 
-    # Create image pull secret for the registry
-    - |
-      echo "Creating registry secret..."
-      kubectl create secret docker-registry gitlab-registry-secret \
-        --docker-server=git.home:5050 \
-        --docker-username=$CI_REGISTRY_USER \
-        --docker-password=$CI_REGISTRY_PASSWORD \
-        --namespace=temporal || true
+#     # Create image pull secret for the registry
+#     - |
+#       echo "Creating registry secret..."
+#       kubectl create secret docker-registry gitlab-registry-secret \
+#         --docker-server=git.home:5050 \
+#         --docker-username=$CI_REGISTRY_USER \
+#         --docker-password=$CI_REGISTRY_PASSWORD \
+#         --namespace=temporal || true
 
-    # Deploy the workers
-    - |
-      echo "Deploying workers..."
-      for worker in python typescript csharp go; do
-        echo "Deploying $worker-worker..."
-        kubectl apply -f "workers/k8s/${worker}-worker.yaml" || {
-          echo "Failed to deploy $worker-worker"
-          exit 1
-        }
-      done
+#     # Deploy the workers
+#     - |
+#       echo "Deploying workers..."
+#       for worker in python typescript csharp go; do
+#         echo "Deploying $worker-worker..."
+#         kubectl apply -f "workers/k8s/${worker}-worker.yaml" || {
+#           echo "Failed to deploy $worker-worker"
+#           exit 1
+#         }
+#       done
 
-    # Debug pod status
-    - |
-      echo "Checking pod status..."
-      kubectl get pods -n temporal
-      echo "Checking pod events..."
-      kubectl get events -n temporal --sort-by='.lastTimestamp'
+#     # Debug pod status
+#     - |
+#       echo "Checking pod status..."
+#       kubectl get pods -n temporal
+#       echo "Checking pod events..."
+#       kubectl get events -n temporal --sort-by='.lastTimestamp'
 
-    # Wait for deployments with timeout and debug
-    - |
-      for deployment in python-worker typescript-worker csharp-worker go-worker; do
-        echo "Waiting for $deployment deployment..."
-        kubectl rollout status deployment/$deployment -n temporal --timeout=300s || {
-          echo "Deployment $deployment failed to roll out. Checking pod status..."
-          kubectl get pods -n temporal -l app=$deployment
-          kubectl describe pods -n temporal -l app=$deployment
-          exit 1
-        }
-      done
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-      when: always
-    - when: manual
-  environment:
-    name: production
-  needs:
-    - build-python-worker
-    - build-typescript-worker
-    - build-csharp-worker
-    - build-go-worker
-    - init-master
-    - init-workers
-    - deploy-metallb
-    - deploy-openebs
-    - deploy-temporal
+#     # Wait for deployments with timeout and debug
+#     - |
+#       for deployment in python-worker typescript-worker csharp-worker go-worker; do
+#         echo "Waiting for $deployment deployment..."
+#         kubectl rollout status deployment/$deployment -n temporal --timeout=300s || {
+#           echo "Deployment $deployment failed to roll out. Checking pod status..."
+#           kubectl get pods -n temporal -l app=$deployment
+#           kubectl describe pods -n temporal -l app=$deployment
+#           exit 1
+#         }
+#       done
+#   rules:
+#     - if: $CI_COMMIT_BRANCH == "main"
+#       when: always
+#     - when: manual
+#   environment:
+#     name: production
+#   needs:
+#     - build-python-worker
+#     - build-typescript-worker
+#     - build-csharp-worker
+#     - build-go-worker
+#     - init-master
+#     - init-workers
+#     - deploy-metallb
+#     - deploy-openebs
+#     - deploy-temporal
 
 test-temporal-workflow:
   stage: test

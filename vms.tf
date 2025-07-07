@@ -2,6 +2,7 @@ resource "proxmox_virtual_environment_vm" "k8s1" {
   name            = "k8s1"
   node_name       = var.pve_node
   stop_on_destroy = true
+  tags            = ["k8s"]
   initialization {
     user_account {
       keys        = [trimspace(tls_private_key.vm_key.public_key_openssh)]
@@ -44,6 +45,7 @@ resource "proxmox_virtual_environment_vm" "k8s2" {
   name            = "k8s2"
   node_name       = var.pve_node
   stop_on_destroy = true
+  tags            = ["k8s"]
   initialization {
     user_account {
       keys        = [trimspace(tls_private_key.vm_key.public_key_openssh)]
@@ -86,6 +88,7 @@ resource "proxmox_virtual_environment_vm" "k8s3" {
   name            = "k8s3"
   node_name       = var.pve_node
   stop_on_destroy = true
+  tags            = ["k8s"]
   initialization {
     user_account {
       keys        = [trimspace(tls_private_key.vm_key.public_key_openssh)]
@@ -128,6 +131,7 @@ resource "proxmox_virtual_environment_vm" "k8s4" {
   name            = "k8s4"
   node_name       = var.pve_node
   stop_on_destroy = true
+  tags            = ["k8s"]
   initialization {
     user_account {
       keys        = [trimspace(tls_private_key.vm_key.public_key_openssh)]
