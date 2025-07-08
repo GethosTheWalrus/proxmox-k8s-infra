@@ -73,7 +73,7 @@ spec:
   ports:
   - name: http
     port: 8080
-    targetPort: 8080
+    targetPort: http
     protocol: TCP
 EOF
 
@@ -83,6 +83,18 @@ kubectl apply -f temporal-web-lb.yaml
 echo "Waiting for LoadBalancer services to get IP addresses..."
 kubectl wait --for=jsonpath='{.status.loadBalancer.ingress[0].ip}'="${LOAD_BALANCER_IP}" service/temporal-frontend-lb -n temporal --timeout=300s || true
 kubectl wait --for=jsonpath='{.status.loadBalancer.ingress[0].ip}'="${WEB_UI_IP}" service/temporal-web-lb -n temporal --timeout=300s || true
+
+echo "Verifying LoadBalancer services..."
+echo "Frontend service:"
+kubectl get service temporal-frontend-lb -n temporal -o wide
+echo "Web UI service:"
+kubectl get service temporal-web-lb -n temporal -o wide
+
+echo "Checking for Web UI pods..."
+kubectl get pods -n temporal -l app.kubernetes.io/component=web
+
+echo "Testing internal connectivity to Web UI..."
+kubectl run test-web-connectivity --image=busybox --restart=Never -n temporal --rm -i --tty -- sh -c "nc -zv temporal-web.temporal.svc.cluster.local 8080 && echo 'Web UI internal connectivity OK'" || true
 
 # Wait for schema setup to complete
 echo "Waiting for schema setup to complete..."
