@@ -346,117 +346,65 @@ deploy-temporal:
     - deploy-metallb
     - deploy-openebs
 
-# deploy-temporal-workers:
-#   stage: deploy
-#   tags:
-#     - shell
-#   variables:
-#     K8S1: 192.168.69.80
-#   before_script:
-#     - apt-get update
-#     - apt-get install -y openssh-client kubectl helm
-#     - mkdir -p ~/.kube  # Use -p to not fail if directory exists
-#     - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config || true  # Don't fail if scp fails
-#     - export KUBECONFIG=~/.kube/config
-#   script:
-#     # Create k8s directory if it doesn't exist
-#     - mkdir -p workers/k8s
-
-#     # Update the worker YAML files to use registry images
-#     - |
-#       set -e  # Exit on error for the script block
-#       echo "Creating worker deployment manifests..."
-      
-#       # Function to create deployment manifest
-#       create_deployment_manifest() {
-#         local worker=$1
-#         local file="workers/k8s/${worker}-worker.yaml"
-#         echo "Creating $file..."
-#         cat > "$file" << EOF
-#       apiVersion: apps/v1
-#       kind: Deployment
-#       metadata:
-#         name: ${worker}-worker
-#         namespace: temporal
-#       spec:
-#         replicas: 1
-#         selector:
-#           matchLabels:
-#             app: ${worker}-worker
-#         template:
-#           metadata:
-#             labels:
-#               app: ${worker}-worker
-#           spec:
-#             containers:
-#             - name: worker
-#               image: ${REGISTRY_PATH}/${worker}-worker:latest
-#               imagePullPolicy: Always
-#             imagePullSecrets:
-#             - name: gitlab-registry-secret
-#       EOF
-#         echo "Created $file"
-#       }
-
-#       # Create manifests for all workers
-#       for worker in python typescript csharp go; do
-#         create_deployment_manifest "$worker"
-#       done
-
-#     # Create image pull secret for the registry
-#     - |
-#       echo "Creating registry secret..."
-#       kubectl create secret docker-registry gitlab-registry-secret \
-#         --docker-server=git.home:5050 \
-#         --docker-username=$CI_REGISTRY_USER \
-#         --docker-password=$CI_REGISTRY_PASSWORD \
-#         --namespace=temporal || true
-
-#     # Deploy the workers
-#     - |
-#       echo "Deploying workers..."
-#       for worker in python typescript csharp go; do
-#         echo "Deploying $worker-worker..."
-#         kubectl apply -f "workers/k8s/${worker}-worker.yaml" || {
-#           echo "Failed to deploy $worker-worker"
-#           exit 1
-#         }
-#       done
-
-#     # Debug pod status
-#     - |
-#       echo "Checking pod status..."
-#       kubectl get pods -n temporal
-#       echo "Checking pod events..."
-#       kubectl get events -n temporal --sort-by='.lastTimestamp'
-
-#     # Wait for deployments with timeout and debug
-#     - |
-#       for deployment in python-worker typescript-worker csharp-worker go-worker; do
-#         echo "Waiting for $deployment deployment..."
-#         kubectl rollout status deployment/$deployment -n temporal --timeout=300s || {
-#           echo "Deployment $deployment failed to roll out. Checking pod status..."
-#           kubectl get pods -n temporal -l app=$deployment
-#           kubectl describe pods -n temporal -l app=$deployment
-#           exit 1
-#         }
-#       done
-#   rules:
-#     - if: $CI_COMMIT_BRANCH == "main"
-#       when: always
-#     - when: manual
-#   environment:
-#     name: production
-#   needs:
-#     - build-python-worker
-#     - build-typescript-worker
-#     - build-csharp-worker
-#     - build-go-worker
-#     - init-master
-#     - init-workers
-#     - deploy-metallb
-#     - deploy-openebs
-#     - deploy-temporal
+debug-temporal:
+  stage: deploy
+  image:
+    name: alpine/k8s:1.29.13
+  variables:
+    K8S1: 192.168.69.80
+    LOAD_BALANCER_IP: 192.168.69.98
+  before_script:
+    - apk --no-cache add openssh-client kubectl helm
+  script:
+    - mkdir ~/.kube
+    - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
+    - export KUBECONFIG=~/.kube/config
+    - echo "=== Current Temporal Services ==="
+    - kubectl get services -n temporal
+    - echo "=== Current Temporal Pods ==="
+    - kubectl get pods -n temporal
+    - echo "=== Service Details ==="
+    - kubectl describe services -n temporal
+    - echo "=== Checking if frontend service exists and has correct ports ==="
+    - kubectl get service temporal-frontend -n temporal -o yaml || echo "Frontend service not found"
+    - echo "=== Creating/Updating Frontend LoadBalancer Service ==="
+    - |
+      cat > temporal-frontend-lb.yaml << EOF
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: temporal-frontend-lb
+        namespace: temporal
+        annotations:
+          metallb.universe.tf/loadBalancerIPs: ${LOAD_BALANCER_IP}
+      spec:
+        type: LoadBalancer
+        selector:
+          app.kubernetes.io/name: temporal
+          app.kubernetes.io/component: frontend
+        ports:
+        - name: frontend
+          port: 7233
+          targetPort: 7233
+          protocol: TCP
+        - name: membership
+          port: 6933
+          targetPort: 6933
+          protocol: TCP
+      EOF
+    - kubectl apply -f temporal-frontend-lb.yaml
+    - echo "=== Waiting for LoadBalancer IP assignment ==="
+    - kubectl wait --for=jsonpath='{.status.loadBalancer.ingress[0].ip}'="${LOAD_BALANCER_IP}" service/temporal-frontend-lb -n temporal --timeout=120s || true
+    - echo "=== Final Service Status ==="
+    - kubectl get services -n temporal
+    - echo "=== Testing port connectivity from within cluster ==="
+    - kubectl run test-pod --image=busybox --restart=Never -n temporal --rm -i --tty -- sh -c "nc -zv temporal-frontend.temporal.svc.cluster.local 7233 || echo 'Port 7233 not reachable'" || true
+  rules:
+    - when: manual
+  needs:
+    - init-master
+    - init-workers
+    - deploy-temporal
 
 # test-temporal-workflow:
 #   stage: test

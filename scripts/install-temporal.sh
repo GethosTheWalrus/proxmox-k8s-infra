@@ -12,8 +12,6 @@ helm upgrade --install temporal temporal/temporal \
   --namespace temporal \
   --version 0.62.0 \
   --set server.replicaCount=3 \
-  --set server.service.type=LoadBalancer \
-  --set "server.service.annotations.metallb\\.universe\\.tf/loadBalancerIPs=${LOAD_BALANCER_IP}" \
   --set cassandra.enabled=true \
   --set cassandra.replicaCount=3 \
   --set ui.enabled=true \
@@ -22,14 +20,67 @@ helm upgrade --install temporal temporal/temporal \
   --set server.persistence.storageClass=openebs-hostpath \
   --set cassandra.persistence.size=10Gi \
   --set cassandra.persistence.storageClass=openebs-hostpath \
-  --set server.services.frontend.type=LoadBalancer \
-  --set "server.services.frontend.annotations.metallb\\.universe\\.tf/loadBalancerIPs=${LOAD_BALANCER_IP}" \
-  --set web.service.type=LoadBalancer \
-  --set "web.service.annotations.metallb\\.universe\\.tf/loadBalancerIPs=${LOAD_BALANCER_IP}" \
   --set schema.setup.enabled=true \
   --set schema.update.enabled=true \
   --set schema.setup.timeout=600s \
   --set schema.update.timeout=600s
+
+# Wait for initial deployment
+echo "Waiting for initial deployment..."
+sleep 30
+
+# Create separate LoadBalancer services for frontend (7233) and web UI (8080)
+echo "Creating LoadBalancer service for Temporal frontend (port 7233)..."
+cat > temporal-frontend-lb.yaml << EOF
+apiVersion: v1
+kind: Service
+metadata:
+  name: temporal-frontend-lb
+  namespace: temporal
+  annotations:
+    metallb.universe.tf/loadBalancerIPs: ${LOAD_BALANCER_IP}
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: temporal
+    app.kubernetes.io/component: frontend
+  ports:
+  - name: frontend
+    port: 7233
+    targetPort: 7233
+    protocol: TCP
+  - name: membership
+    port: 6933
+    targetPort: 6933
+    protocol: TCP
+EOF
+
+echo "Creating LoadBalancer service for Temporal Web UI (port 8080)..."
+cat > temporal-web-lb.yaml << EOF
+apiVersion: v1
+kind: Service
+metadata:
+  name: temporal-web-lb
+  namespace: temporal
+  annotations:
+    metallb.universe.tf/loadBalancerIPs: ${LOAD_BALANCER_IP}
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: temporal-ui
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+EOF
+
+kubectl apply -f temporal-frontend-lb.yaml
+kubectl apply -f temporal-web-lb.yaml
+
+echo "Waiting for LoadBalancer services to get IP addresses..."
+kubectl wait --for=jsonpath='{.status.loadBalancer.ingress[0].ip}'="${LOAD_BALANCER_IP}" service/temporal-frontend-lb -n temporal --timeout=300s || true
+kubectl wait --for=jsonpath='{.status.loadBalancer.ingress[0].ip}'="${LOAD_BALANCER_IP}" service/temporal-web-lb -n temporal --timeout=300s || true
 
 # Wait for schema setup to complete
 echo "Waiting for schema setup to complete..."
