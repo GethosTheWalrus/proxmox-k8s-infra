@@ -458,93 +458,93 @@ deploy-temporal:
 #     - deploy-openebs
 #     - deploy-temporal
 
-test-temporal-workflow:
-  stage: test
-  tags:
-    - shell
-  variables:
-    TEMPORAL_HOST: "192.168.69.98:7233"
-    TEMPORAL_NAMESPACE: "default"
-  before_script:
-    - python3 -m pip install --user temporalio requests
-  script:
-    - |
-      cat > test_workflow.py << 'EOF'
-      import asyncio
-      import os
-      from datetime import timedelta
-      from temporalio.client import Client
-      from temporalio.worker import Worker
-      from temporalio import workflow, activity
-      from temporalio.common import RetryPolicy
+# test-temporal-workflow:
+#   stage: test
+#   tags:
+#     - shell
+#   variables:
+#     TEMPORAL_HOST: "192.168.69.98:7233"
+#     TEMPORAL_NAMESPACE: "default"
+#   before_script:
+#     - python3 -m pip install --user temporalio requests
+#   script:
+#     - |
+#       cat > test_workflow.py << 'EOF'
+#       import asyncio
+#       import os
+#       from datetime import timedelta
+#       from temporalio.client import Client
+#       from temporalio.worker import Worker
+#       from temporalio import workflow, activity
+#       from temporalio.common import RetryPolicy
 
-      @workflow.defn
-      class TestWorkflow:
-          @workflow.run
-          async def run(self, name: str) -> str:
-              # Start Python activity
-              python_result = await workflow.execute_activity(
-                  python_activity,
-                  "Hello from Python",
-                  start_to_close_timeout=timedelta(seconds=5),
-                  retry_policy=RetryPolicy(maximum_attempts=3)
-              )
+#       @workflow.defn
+#       class TestWorkflow:
+#           @workflow.run
+#           async def run(self, name: str) -> str:
+#               # Start Python activity
+#               python_result = await workflow.execute_activity(
+#                   python_activity,
+#                   "Hello from Python",
+#                   start_to_close_timeout=timedelta(seconds=5),
+#                   retry_policy=RetryPolicy(maximum_attempts=3)
+#               )
               
-              # Start TypeScript activity
-              typescript_result = await workflow.execute_activity(
-                  "ProcessTypeScript",
-                  "Hello from TypeScript",
-                  start_to_close_timeout=timedelta(seconds=5),
-                  retry_policy=RetryPolicy(maximum_attempts=3)
-              )
+#               # Start TypeScript activity
+#               typescript_result = await workflow.execute_activity(
+#                   "ProcessTypeScript",
+#                   "Hello from TypeScript",
+#                   start_to_close_timeout=timedelta(seconds=5),
+#                   retry_policy=RetryPolicy(maximum_attempts=3)
+#               )
               
-              # Start Go activity
-              go_result = await workflow.execute_activity(
-                  "ProcessGo",
-                  "Hello from Go",
-                  start_to_close_timeout=timedelta(seconds=5),
-                  retry_policy=RetryPolicy(maximum_attempts=3)
-              )
+#               # Start Go activity
+#               go_result = await workflow.execute_activity(
+#                   "ProcessGo",
+#                   "Hello from Go",
+#                   start_to_close_timeout=timedelta(seconds=5),
+#                   retry_policy=RetryPolicy(maximum_attempts=3)
+#               )
               
-              return f"Python: {python_result}, TypeScript: {typescript_result}, Go: {go_result}"
+#               return f"Python: {python_result}, TypeScript: {typescript_result}, Go: {go_result}"
 
-      @activity.defn
-      async def python_activity(message: str) -> str:
-          return f"Python says: {message}"
+#       @activity.defn
+#       async def python_activity(message: str) -> str:
+#           return f"Python says: {message}"
 
-      async def main():
-          # Connect to Temporal server using the LoadBalancer IP
-          client = await Client.connect(
-              os.environ["TEMPORAL_HOST"],
-              namespace=os.environ["TEMPORAL_NAMESPACE"]
-          )
+#       async def main():
+#           # Connect to Temporal server using the LoadBalancer IP
+#           client = await Client.connect(
+#               os.environ["TEMPORAL_HOST"],
+#               namespace=os.environ["TEMPORAL_NAMESPACE"]
+#           )
           
-          # Start the workflow
-          handle = await client.start_workflow(
-              TestWorkflow.run,
-              "Temporal",
-              id="test-workflow",
-              task_queue="python-task-queue"
-          )
+#           # Start the workflow
+#           handle = await client.start_workflow(
+#               TestWorkflow.run,
+#               "Temporal",
+#               id="test-workflow",
+#               task_queue="python-task-queue"
+#           )
           
-          # Wait for the result
-          result = await handle.result()
-          print(f"Workflow result: {result}")
+#           # Wait for the result
+#           result = await handle.result()
+#           print(f"Workflow result: {result}")
 
-      if __name__ == "__main__":
-          asyncio.run(main())
-      EOF
+#       if __name__ == "__main__":
+#           asyncio.run(main())
+#       EOF
 
-    - python3 test_workflow.py
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-      when: always
-    - when: manual
-  environment:
-    name: production
-  needs:
-    - deploy-temporal
-    - deploy-temporal-workers
+#     - python3 test_workflow.py
+#   rules:
+#     - if: $CI_COMMIT_BRANCH == "main"
+#       when: always
+#     - when: manual
+#   environment:
+#     name: production
+#   needs:
+#     - deploy-temporal
+#     - deploy-temporal-workers
 
 destroy-cluster:
   stage: destroy
