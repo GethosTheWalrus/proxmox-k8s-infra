@@ -316,12 +316,7 @@ deploy-temporal:
       - |
         if [ -n "$DOCKER_USERNAME" ] && [ -n "$DOCKER_PASSWORD" ]; then
           echo "Creating Kubernetes secret for Docker Hub..."
-          kubectl create secret docker-registry dockerhub-secret \
-            --docker-server=docker.io \
-            --docker-username=$DOCKER_USERNAME \
-            --docker-password=$DOCKER_PASSWORD \
-            --docker-email=$DOCKER_EMAIL \
-            --namespace=temporal || true
+          kubectl create secret docker-registry dockerhub-secret --docker-server=docker.io --docker-username=$DOCKER_USERNAME --docker-password=$DOCKER_PASSWORD --docker-email=$DOCKER_EMAIL --namespace=temporal || true
         fi
       - chmod +x scripts/install-temporal.sh
       - scripts/install-temporal.sh
@@ -330,8 +325,8 @@ deploy-temporal:
       - kubectl get services -n temporal | grep LoadBalancer
       - echo ""
       - echo "Access Information:"
-      - echo "  Temporal Frontend (gRPC): ${LOAD_BALANCER_IP}:7233"
-      - echo "  Temporal Web UI: ${WEB_UI_IP}:8080"
+      - echo "  Temporal Frontend (gRPC):${LOAD_BALANCER_IP}:7233"
+      - echo "  Temporal Web UI:${WEB_UI_IP}:8080"
     rules:
       - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
         when: always
