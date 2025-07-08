@@ -354,7 +354,7 @@ debug-temporal:
     K8S1: 192.168.69.80
     LOAD_BALANCER_IP: 192.168.69.98
   before_script:
-    - apk --no-cache add openssh-client kubectl helm
+    - apk --no-cache add openssh-client kubectl helm 
   script:
     - mkdir ~/.kube
     - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
