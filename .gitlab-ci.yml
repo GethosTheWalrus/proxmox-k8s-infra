@@ -293,7 +293,6 @@ deploy-temporal:
       WEB_UI_IP: 192.168.69.99
     before_script:
       - apk --no-cache add openssh-client kubectl helm docker-cli
-      # Configure Docker to use insecure registry
       - mkdir -p /etc/docker
       - |
         cat > /etc/docker/daemon.json << EOF
@@ -301,25 +300,19 @@ deploy-temporal:
           "insecure-registries": ["git.home:5050"]
         }
         EOF
-      # Login to Docker Hub if credentials are provided
+    script:
+      - mkdir ~/.kube
+      - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
+      - export KUBECONFIG=~/.kube/config
       - |
         if [ -n "$DOCKER_USERNAME" ] && [ -n "$DOCKER_PASSWORD" ]; then
           echo "Attempting to login to Docker Hub..."
           echo "Username: $DOCKER_USERNAME"
           echo "Password length: ${#DOCKER_PASSWORD}"
-          # Try login with explicit registry
-          docker login docker.io -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
-          # If that fails, try without specifying registry
-          if [ $? -ne 0 ]; then
-            echo "First login attempt failed, trying alternative method..."
-            docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
-          fi
+          docker login docker.io -u $DOCKER_USERNAME -p $DOCKER_PASSWORD || docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
         else
           echo "Docker credentials not provided"
-          echo "DOCKER_USERNAME is set: $([ -n "$DOCKER_USERNAME" ] && echo 'yes' || echo 'no')"
-          echo "DOCKER_PASSWORD is set: $([ -n "$DOCKER_PASSWORD" ] && echo 'yes' || echo 'no')"
-        fi 
-      # Create Kubernetes secret for Docker Hub credentials
+        fi
       - |
         if [ -n "$DOCKER_USERNAME" ] && [ -n "$DOCKER_PASSWORD" ]; then
           echo "Creating Kubernetes secret for Docker Hub..."
@@ -330,10 +323,6 @@ deploy-temporal:
             --docker-email=$DOCKER_EMAIL \
             --namespace=temporal || true
         fi
-    script:
-      - mkdir ~/.kube
-      - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
-      - export KUBECONFIG=~/.kube/config
       - chmod +x scripts/install-temporal.sh
       - scripts/install-temporal.sh
       - echo "=== Temporal Deployment Complete ==="
