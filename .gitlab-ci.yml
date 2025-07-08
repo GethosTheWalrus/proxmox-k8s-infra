@@ -251,7 +251,7 @@ deploy-nginx:
   needs:
     - init-master
     - init-workers
-    - deploy-metallb
+    - deploy-metallb 
 
 deploy-openebs:
   stage: deploy
