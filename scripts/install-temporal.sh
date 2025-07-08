@@ -63,11 +63,13 @@ metadata:
   name: temporal-web-lb
   namespace: temporal
   annotations:
-    metallb.universe.tf/loadBalancerIPs: ${LOAD_BALANCER_IP}
+    metallb.universe.tf/loadBalancerIPs: ${WEB_UI_IP}
 spec:
   type: LoadBalancer
   selector:
-    app.kubernetes.io/name: temporal-ui
+    app.kubernetes.io/component: web
+    app.kubernetes.io/instance: temporal
+    app.kubernetes.io/name: temporal
   ports:
   - name: http
     port: 8080
@@ -80,7 +82,7 @@ kubectl apply -f temporal-web-lb.yaml
 
 echo "Waiting for LoadBalancer services to get IP addresses..."
 kubectl wait --for=jsonpath='{.status.loadBalancer.ingress[0].ip}'="${LOAD_BALANCER_IP}" service/temporal-frontend-lb -n temporal --timeout=300s || true
-kubectl wait --for=jsonpath='{.status.loadBalancer.ingress[0].ip}'="${LOAD_BALANCER_IP}" service/temporal-web-lb -n temporal --timeout=300s || true
+kubectl wait --for=jsonpath='{.status.loadBalancer.ingress[0].ip}'="${WEB_UI_IP}" service/temporal-web-lb -n temporal --timeout=300s || true
 
 # Wait for schema setup to complete
 echo "Waiting for schema setup to complete..."

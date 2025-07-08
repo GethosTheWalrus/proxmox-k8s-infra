@@ -290,6 +290,7 @@ deploy-temporal:
     variables:
       K8S1: 192.168.69.80
       LOAD_BALANCER_IP: 192.168.69.98
+      WEB_UI_IP: 192.168.69.99
     before_script:
       - apk --no-cache add openssh-client kubectl helm docker-cli
       # Configure Docker to use insecure registry
@@ -335,6 +336,13 @@ deploy-temporal:
       - export KUBECONFIG=~/.kube/config
       - chmod +x scripts/install-temporal.sh
       - scripts/install-temporal.sh
+      - echo "=== Temporal Deployment Complete ==="
+      - echo "Services:"
+      - kubectl get services -n temporal | grep LoadBalancer
+      - echo ""
+      - echo "Access Information:"
+      - echo "  Temporal Frontend (gRPC): ${LOAD_BALANCER_IP}:7233"
+      - echo "  Temporal Web UI: ${WEB_UI_IP}:8080"
     rules:
       - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
         when: always
@@ -345,66 +353,6 @@ deploy-temporal:
     - init-workers
     - deploy-metallb
     - deploy-openebs
-
-debug-temporal:
-  stage: deploy
-  image:
-    name: alpine/k8s:1.29.13
-  variables:
-    K8S1: 192.168.69.80
-    LOAD_BALANCER_IP: 192.168.69.98
-  before_script:
-    - apk --no-cache add openssh-client kubectl helm 
-  script:
-    - mkdir ~/.kube
-    - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
-    - export KUBECONFIG=~/.kube/config
-    - echo "=== Current Temporal Services ==="
-    - kubectl get services -n temporal
-    - echo "=== Current Temporal Pods ==="
-    - kubectl get pods -n temporal
-    - echo "=== Service Details ==="
-    - kubectl describe services -n temporal
-    - echo "=== Checking if frontend service exists and has correct ports ==="
-    - kubectl get service temporal-frontend -n temporal -o yaml || echo "Frontend service not found"
-    - echo "=== Creating/Updating Frontend LoadBalancer Service ==="
-    - |
-      cat > temporal-frontend-lb.yaml << EOF
-      apiVersion: v1
-      kind: Service
-      metadata:
-        name: temporal-frontend-lb
-        namespace: temporal
-        annotations:
-          metallb.universe.tf/loadBalancerIPs: ${LOAD_BALANCER_IP}
-      spec:
-        type: LoadBalancer
-        selector:
-          app.kubernetes.io/name: temporal
-          app.kubernetes.io/component: frontend
-        ports:
-        - name: frontend
-          port: 7233
-          targetPort: 7233
-          protocol: TCP
-        - name: membership
-          port: 6933
-          targetPort: 6933
-          protocol: TCP
-      EOF
-    - kubectl apply -f temporal-frontend-lb.yaml
-    - echo "=== Waiting for LoadBalancer IP assignment ==="
-    - kubectl wait --for=jsonpath='{.status.loadBalancer.ingress[0].ip}'="${LOAD_BALANCER_IP}" service/temporal-frontend-lb -n temporal --timeout=120s || true
-    - echo "=== Final Service Status ==="
-    - kubectl get services -n temporal
-    - echo "=== Testing port connectivity from within cluster ==="
-    - kubectl run test-pod --image=busybox --restart=Never -n temporal --rm -i --tty -- sh -c "nc -zv temporal-frontend.temporal.svc.cluster.local 7233 || echo 'Port 7233 not reachable'" || true
-  rules:
-    - when: manual
-  needs:
-    - init-master
-    - init-workers
-    - deploy-temporal
 
 # test-temporal-workflow:
 #   stage: test
