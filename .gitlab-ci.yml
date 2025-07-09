@@ -336,7 +336,7 @@ deploy-temporal:
     - init-master
     - init-workers
     - deploy-metallb
-    - deploy-openebs
+    - deploy-openebs 
 
 # test-temporal-workflow:
 #   stage: test
