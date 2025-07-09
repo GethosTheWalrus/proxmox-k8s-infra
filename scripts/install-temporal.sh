@@ -84,36 +84,12 @@ EOF
 kubectl apply -f temporal-frontend-lb.yaml
 kubectl apply -f temporal-web-lb.yaml
 
-# Create a ConfigMap for Web UI configuration to properly handle CSRF
-echo "Creating Web UI configuration..."
-cat > temporal-web-config.yaml << EOF
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: temporal-web-config
-  namespace: temporal
-data:
-  config.yaml: |
-    server:
-      port: 8080
-    temporal:
-      grpc-endpoint: temporal-frontend:7233
-    cors:
-      origins:
-        - "*"
-      allow-credentials: true
-    auth:
-      enabled: false
-    csrf:
-      key: temporal-csrf-key
-      secure: false
-      same-site: lax
-EOF
+# Wait for web deployment to be ready before patching
+echo "Waiting for web deployment to be ready..."
+kubectl wait --for=condition=available deployment/temporal-web -n temporal --timeout=300s
 
-kubectl apply -f temporal-web-config.yaml
-
-# Patch the web deployment to use the configuration
-echo "Patching Web UI deployment with CSRF configuration..."
+# Patch the web deployment with environment variables only (no config file)
+echo "Patching Web UI deployment with CSRF environment variables..."
 kubectl patch deployment temporal-web -n temporal -p '{
   "spec": {
     "template": {
@@ -133,23 +109,16 @@ kubectl patch deployment temporal-web -n temporal -p '{
               {
                 "name": "TEMPORAL_CORS_ORIGINS",
                 "value": "*"
-              }
-            ],
-            "volumeMounts": [
+              },
               {
-                "name": "web-config",
-                "mountPath": "/etc/temporal/config",
-                "readOnly": true
+                "name": "TEMPORAL_ENABLE_UI",
+                "value": "true"
+              },
+              {
+                "name": "TEMPORAL_WEB_PORT",
+                "value": "8080"
               }
             ]
-          }
-        ],
-        "volumes": [
-          {
-            "name": "web-config",
-            "configMap": {
-              "name": "temporal-web-config"
-            }
           }
         ]
       }
