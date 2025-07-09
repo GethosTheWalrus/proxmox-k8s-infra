@@ -290,7 +290,7 @@ deploy-temporal:
     variables:
       K8S1: 192.168.69.80
       LOAD_BALANCER_IP: 192.168.69.98
-      WEB_UI_IP: 192.168.69.99
+      WEB_UI_IP: 192.168.69.97
     before_script:
       - apk --no-cache add openssh-client kubectl helm docker-cli
       - mkdir -p /etc/docker

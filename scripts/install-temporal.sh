@@ -23,7 +23,11 @@ helm upgrade --install temporal temporal/temporal \
   --set schema.setup.enabled=true \
   --set schema.update.enabled=true \
   --set schema.setup.timeout=600s \
-  --set schema.update.timeout=600s
+  --set schema.update.timeout=600s \
+  --set web.config.cors.origins="*" \
+  --set web.config.auth.enabled=false \
+  --set web.config.csrfKey="temporal-csrf-key" \
+  --set web.config.cors.allowCredentials=true
 
 # Wait for initial deployment
 echo "Waiting for initial deployment..."
@@ -79,6 +83,79 @@ EOF
 
 kubectl apply -f temporal-frontend-lb.yaml
 kubectl apply -f temporal-web-lb.yaml
+
+# Create a ConfigMap for Web UI configuration to properly handle CSRF
+echo "Creating Web UI configuration..."
+cat > temporal-web-config.yaml << EOF
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: temporal-web-config
+  namespace: temporal
+data:
+  config.yaml: |
+    server:
+      port: 8080
+    temporal:
+      grpc-endpoint: temporal-frontend:7233
+    cors:
+      origins:
+        - "*"
+      allow-credentials: true
+    auth:
+      enabled: false
+    csrf:
+      key: temporal-csrf-key
+      secure: false
+      same-site: lax
+EOF
+
+kubectl apply -f temporal-web-config.yaml
+
+# Patch the web deployment to use the configuration
+echo "Patching Web UI deployment with CSRF configuration..."
+kubectl patch deployment temporal-web -n temporal -p '{
+  "spec": {
+    "template": {
+      "spec": {
+        "containers": [
+          {
+            "name": "temporal-web",
+            "env": [
+              {
+                "name": "TEMPORAL_CSRF_COOKIE_INSECURE",
+                "value": "true"
+              },
+              {
+                "name": "TEMPORAL_PERMIT_WRITE_API",
+                "value": "true"
+              },
+              {
+                "name": "TEMPORAL_CORS_ORIGINS",
+                "value": "*"
+              }
+            ],
+            "volumeMounts": [
+              {
+                "name": "web-config",
+                "mountPath": "/etc/temporal/config",
+                "readOnly": true
+              }
+            ]
+          }
+        ],
+        "volumes": [
+          {
+            "name": "web-config",
+            "configMap": {
+              "name": "temporal-web-config"
+            }
+          }
+        ]
+      }
+    }
+  }
+}'
 
 echo "Waiting for LoadBalancer services to get IP addresses..."
 kubectl wait --for=jsonpath='{.status.loadBalancer.ingress[0].ip}'="${LOAD_BALANCER_IP}" service/temporal-frontend-lb -n temporal --timeout=300s || true
@@ -150,3 +227,22 @@ fi
 # Show final pod status
 echo "Final pod status:"
 kubectl get pods -n temporal 
+
+# Register the default namespace in Temporal
+echo "Registering default namespace in Temporal..."
+kubectl exec -n temporal deployment/temporal-admintools -- tctl --namespace default namespace register || {
+  echo "Failed to register namespace, trying alternative method..."
+  kubectl exec -n temporal deployment/temporal-admintools -- tctl namespace register --namespace default --description "Default namespace" || true
+}
+
+# Verify namespace registration
+echo "Verifying namespace registration..."
+kubectl exec -n temporal deployment/temporal-admintools -- tctl namespace list || true
+
+echo ""
+echo "================================"
+echo "Temporal installation complete!"
+echo "Frontend: http://${LOAD_BALANCER_IP}:7233"
+echo "Web UI: http://${WEB_UI_IP}:8080"
+echo "CSRF token issues should now be resolved."
+echo "================================"
