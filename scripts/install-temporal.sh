@@ -26,8 +26,13 @@ helm upgrade --install temporal temporal/temporal \
   --set schema.update.timeout=600s \
   --set web.config.cors.origins="*" \
   --set web.config.auth.enabled=false \
-  --set web.config.csrfKey="temporal-csrf-key" \
-  --set web.config.cors.allowCredentials=true
+  --set web.config.cors.allowCredentials=true \
+  --set web.additionalEnv[0].name="TEMPORAL_CSRF_COOKIE_INSECURE" \
+  --set web.additionalEnv[0].value="true" \
+  --set web.additionalEnv[1].name="TEMPORAL_PERMIT_WRITE_API" \
+  --set web.additionalEnv[1].value="true" \
+  --set web.additionalEnv[2].name="TEMPORAL_CORS_ORIGINS" \
+  --set web.additionalEnv[2].value="*"
 
 # Wait for initial deployment
 echo "Waiting for initial deployment..."
@@ -83,48 +88,6 @@ EOF
 
 kubectl apply -f temporal-frontend-lb.yaml
 kubectl apply -f temporal-web-lb.yaml
-
-# Wait for web deployment to be ready before patching
-echo "Waiting for web deployment to be ready..."
-kubectl wait --for=condition=available deployment/temporal-web -n temporal --timeout=300s
-
-# Patch the web deployment with environment variables only (no config file)
-echo "Patching Web UI deployment with CSRF environment variables..."
-kubectl patch deployment temporal-web -n temporal -p '{
-  "spec": {
-    "template": {
-      "spec": {
-        "containers": [
-          {
-            "name": "temporal-web",
-            "env": [
-              {
-                "name": "TEMPORAL_CSRF_COOKIE_INSECURE",
-                "value": "true"
-              },
-              {
-                "name": "TEMPORAL_PERMIT_WRITE_API",
-                "value": "true"
-              },
-              {
-                "name": "TEMPORAL_CORS_ORIGINS",
-                "value": "*"
-              },
-              {
-                "name": "TEMPORAL_ENABLE_UI",
-                "value": "true"
-              },
-              {
-                "name": "TEMPORAL_WEB_PORT",
-                "value": "8080"
-              }
-            ]
-          }
-        ]
-      }
-    }
-  }
-}'
 
 echo "Waiting for LoadBalancer services to get IP addresses..."
 kubectl wait --for=jsonpath='{.status.loadBalancer.ingress[0].ip}'="${LOAD_BALANCER_IP}" service/temporal-frontend-lb -n temporal --timeout=300s || true
