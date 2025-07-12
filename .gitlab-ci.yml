@@ -272,7 +272,7 @@ deploy-openebs:
     - echo "Verifying storage class..."
     - kubectl get sc
     - echo "Verifying OpenEBS pods are running..."
-    - kubectl get pods -n openebs
+    - kubectl get pods -n openebs 
   rules:
     - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
       when: always
