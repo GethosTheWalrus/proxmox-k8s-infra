@@ -28,7 +28,7 @@ helm upgrade --install temporal temporal/temporal \
   --set web.replicaCount=2 \
   --set web.service.type=ClusterIP \
   --set web.service.port=8080 \
-  --set web.image.tag="2.13.0" \
+  --set web.image.tag="latest" \
   --set web.config.cors.cookieInsecure=true \
   --set web.config.cors.origins="*" \
   --set web.config.cors.allowCredentials=true
