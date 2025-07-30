@@ -22,7 +22,7 @@ variable "datastore_id" {
 }
 variable "os_image" {
     type=string
-    default="https://cloud-images.ubuntu.com/oracular/current/oracular-server-cloudimg-amd64.img"
+    default="https://cloud-images.ubuntu.com/daily/server/daily/server/daily/server/noble/current/noble-server-cloudimg-amd64.img"
 }
 variable "pve_node" {
     type=string
