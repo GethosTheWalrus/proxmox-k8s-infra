@@ -104,7 +104,13 @@ sleep 30
 
 # Patch the web deployment with environment variables to fix CSRF issue
 echo "Patching Web UI deployment with CSRF environment variables..."
-kubectl patch deployment temporal-web -n temporal --type='merge' -p='{
+
+# Get the current container spec to preserve existing configuration
+echo "Getting current container configuration..."
+kubectl get deployment temporal-web -n temporal -o yaml > temporal-web-backup.yaml
+
+# Use strategic merge patch to add environment variables
+kubectl patch deployment temporal-web -n temporal --type='strategic' -p='{
   "spec": {
     "template": {
       "spec": {
@@ -130,7 +136,15 @@ kubectl patch deployment temporal-web -n temporal --type='merge' -p='{
       }
     }
   }
-}'
+}' || {
+  echo "Strategic patch failed, trying alternative approach..."
+  
+  # Alternative approach: use kubectl set env
+  kubectl set env deployment/temporal-web -n temporal \
+    TEMPORAL_CSRF_COOKIE_INSECURE=true \
+    TEMPORAL_PERMIT_WRITE_API=true \
+    TEMPORAL_CORS_ORIGINS="http://${WEB_UI_IP}:8080"
+}
 
 # Wait for the patched deployment to be ready
 echo "Waiting for patched web deployment to be ready..."
