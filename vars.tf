@@ -22,7 +22,7 @@ variable "datastore_id" {
 }
 variable "os_image_local_path" {
     type=string
-    default="local:iso/noble-server-cloudimg-amd64.img"
+    default="local:iso/oracular-server-cloudimg-amd64.img"
 }
 variable "pve_node" {
     type=string
