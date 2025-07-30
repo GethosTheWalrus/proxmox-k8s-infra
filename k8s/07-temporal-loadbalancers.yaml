@@ -1,0 +1,42 @@
+# LoadBalancer service for Temporal Frontend (gRPC API)
+apiVersion: v1
+kind: Service
+metadata:
+  name: temporal-frontend-lb
+  namespace: temporal
+  annotations:
+    metallb.universe.tf/loadBalancerIPs: 192.168.69.98  # Adjust IP as needed
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: temporal
+    app.kubernetes.io/component: frontend
+  ports:
+  - name: frontend
+    port: 7233
+    targetPort: 7233
+    protocol: TCP
+  - name: membership
+    port: 6933
+    targetPort: 6933
+    protocol: TCP
+---
+# LoadBalancer service for Temporal Web UI
+apiVersion: v1
+kind: Service
+metadata:
+  name: temporal-web-lb
+  namespace: temporal
+  annotations:
+    metallb.universe.tf/loadBalancerIPs: 192.168.69.97  # Adjust IP as needed
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/component: web
+    app.kubernetes.io/instance: temporal
+    app.kubernetes.io/name: temporal
+  ports:
+  - name: http
+    port: 8080
+    targetPort: http
+    protocol: TCP

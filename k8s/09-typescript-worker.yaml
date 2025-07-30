@@ -1,0 +1,59 @@
+# TypeScript Temporal Worker Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: typescript-worker
+  namespace: temporal
+  labels:
+    app: typescript-worker
+    component: worker
+    language: typescript
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: typescript-worker
+  template:
+    metadata:
+      labels:
+        app: typescript-worker
+        component: worker
+        language: typescript
+    spec:
+      imagePullSecrets:
+      - name: gitlab-registry-secret
+      containers:
+      - name: typescript-worker
+        image: git.home:5050/mike/proxmox-k8s-infra/typescript-worker:latest
+        env:
+        - name: TEMPORAL_HOST
+          value: temporal-frontend.temporal.svc.cluster.local:7233
+        - name: TEMPORAL_NAMESPACE
+          value: default
+        - name: WORKER_TASK_QUEUE
+          value: typescript-task-queue
+        - name: NODE_ENV
+          value: production
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          exec:
+            command:
+            - node
+            - -e
+            - "process.exit(0)"
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          exec:
+            command:
+            - node
+            - -e
+            - "process.exit(0)"
+          initialDelaySeconds: 10
+          periodSeconds: 10
