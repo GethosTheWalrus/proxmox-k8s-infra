@@ -62,6 +62,7 @@ echo "net.bridge.bridge-nf-call-iptables = 1" | sudo tee -a /etc/sysctl.conf
 sudo sysctl -p
 
 modprobe br_netfilter
+echo 'br_netfilter' | sudo tee -a /etc/modules-load.d/k8s.conf
 sysctl -w net.bridge.bridge-nf-call-iptables = 1
 
 sleep 5
