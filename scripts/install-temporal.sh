@@ -1,6 +1,12 @@
 #!/bin/bash
 
+set -e  # Exit on any error
+
+echo "Testing kubectl connectivity before proceeding..."
+kubectl get nodes
+
 # Add Temporal Helm repository
+echo "Adding Temporal Helm repository..."
 helm repo add temporal https://temporalio.github.io/helm-charts
 helm repo update
 

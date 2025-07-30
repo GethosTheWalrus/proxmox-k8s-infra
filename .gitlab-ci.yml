@@ -248,11 +248,17 @@ deploy-nginx:
   before_script:
     - apk --no-cache add openssh-client
   script:
-    - mkdir ~/.kube
+    - mkdir -p ~/.kube
     - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
     - export KUBECONFIG=~/.kube/config
+    - chmod 600 ~/.kube/config
+    - echo "Testing kubectl connectivity..."
+    - kubectl get nodes --timeout=30s
     - kubectl create deploy nginx --image nginx
     - kubectl expose deploy nginx --port 80 --type LoadBalancer
+    - echo "Waiting for nginx deployment to be ready..."
+    - kubectl wait --for=condition=available deployment/nginx --timeout=300s
+    - echo "Nginx deployment successful"
   rules:
   - when: always
   allow_failure: false
@@ -263,6 +269,7 @@ deploy-nginx:
 
 deploy-openebs:
   stage: deploy
+  timeout: 15m
   image:
     name: alpine/k8s:1.29.13
   variables:
@@ -270,9 +277,16 @@ deploy-openebs:
   before_script:
     - apk --no-cache add openssh-client kubectl helm
   script:
-    - mkdir ~/.kube
+    - mkdir -p ~/.kube
     - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
     - export KUBECONFIG=~/.kube/config
+    - chmod 600 ~/.kube/config
+    - echo "Waiting for Kubernetes API to be ready..."
+    - sleep 10
+    - echo "Testing kubectl connectivity..."
+    - kubectl get nodes --timeout=30s
+    - echo "Verifying cluster is healthy..."
+    - kubectl get pods -A | head -10
     - chmod +x scripts/install-openebs.sh
     - scripts/install-openebs.sh
     - echo "Applying storage class..."
@@ -290,9 +304,16 @@ deploy-openebs:
     - init-master
     - init-workers
     - deploy-metallb
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+      - api_failure
 
 deploy-temporal:
     stage: deploy
+    timeout: 20m
     image:
       name: alpine/k8s:1.29.13
     variables:
@@ -309,9 +330,16 @@ deploy-temporal:
         }
         EOF
     script:
-      - mkdir ~/.kube
+      - mkdir -p ~/.kube
       - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
       - export KUBECONFIG=~/.kube/config
+      - chmod 600 ~/.kube/config
+      - echo "Waiting for Kubernetes API to be ready..."
+      - sleep 10
+      - echo "Testing kubectl connectivity..."
+      - kubectl get nodes --timeout=30s
+      - echo "Verifying cluster is healthy..."
+      - kubectl get pods -A | head -10
       - |
         if [ -n "$DOCKER_USERNAME" ] && [ -n "$DOCKER_PASSWORD" ]; then
           echo "Attempting to login to Docker Hub..."
@@ -345,6 +373,12 @@ deploy-temporal:
     - init-workers
     - deploy-metallb
     - deploy-openebs 
+    retry:
+      max: 2
+      when:
+        - runner_system_failure
+        - stuck_or_timeout_failure
+        - api_failure 
 
 # test-temporal-workflow:
 #   stage: test
