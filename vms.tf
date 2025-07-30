@@ -176,7 +176,7 @@ resource "tls_private_key" "vm_key" {
 
 resource "proxmox_virtual_environment_download_file" "ubuntu_cloud_image" {
   content_type   = "iso"
-  datastore_id   = var.os_image_datazstore_id
+  datastore_id   = var.os_image_datastore_id
   node_name      = var.pve_node
   url            = var.os_image
 }
