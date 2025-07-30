@@ -159,6 +159,7 @@ deploy-infra:
 
 init-master:
   stage: configure
+  timeout: 20m
   image:
     name: ubuntu:latest
   variables:
@@ -186,6 +187,7 @@ init-workers:
   stage: configure
   image:
     name: ubuntu:latest
+  timeout: 20m
   variables:
     K8S1: 192.168.69.80
     K8S2: 192.168.69.81
@@ -207,6 +209,11 @@ init-workers:
   needs:
     - deploy-infra
     - init-master
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
 
 deploy-metallb:
   stage: deploy
