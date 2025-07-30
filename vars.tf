@@ -22,8 +22,8 @@ variable "datastore_id" {
 }
 variable "os_image" {
     type=string
-    default="https://cloud-images.ubuntu.com/releases/noble/release/ubuntu-24.04-server-cloudimg-amd64.img"
-} 
+    default="https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
+}
 variable "pve_node" {
     type=string
     default="proxmox1"
