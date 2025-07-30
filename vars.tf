@@ -22,7 +22,7 @@ variable "datastore_id" {
 }
 variable "os_image" {
     type=string
-    default="https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-amd64.img"
+    default="https://cloud-images.ubuntu.com/releases/noble/release/ubuntu-24.04-server-cloudimg-amd64.img"
 } 
 variable "pve_node" {
     type=string
