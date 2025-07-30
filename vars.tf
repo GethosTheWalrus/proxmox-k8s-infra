@@ -22,7 +22,7 @@ variable "datastore_id" {
 }
 variable "os_image" {
     type=string
-    default="https://releases.ubuntu.com/24.04/ubuntu-24.04.1-live-server-amd64.iso"
+    default="https://releases.ubuntu.com/24.04/ubuntu-24.04.2-live-server-amd64.iso"
 } 
 variable "pve_node" {
     type=string
