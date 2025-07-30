@@ -253,7 +253,7 @@ deploy-nginx:
     - export KUBECONFIG=~/.kube/config
     - chmod 600 ~/.kube/config
     - echo "Testing kubectl connectivity..."
-    - kubectl get nodes --timeout=30s
+    - kubectl get nodes
     - kubectl create deploy nginx --image nginx
     - kubectl expose deploy nginx --port 80 --type LoadBalancer
     - echo "Waiting for nginx deployment to be ready..."
@@ -284,7 +284,7 @@ deploy-openebs:
     - echo "Waiting for Kubernetes API to be ready..."
     - sleep 10
     - echo "Testing kubectl connectivity..."
-    - kubectl get nodes --timeout=30s
+    - kubectl get node
     - echo "Verifying cluster is healthy..."
     - kubectl get pods -A | head -10
     - chmod +x scripts/install-openebs.sh
@@ -337,7 +337,7 @@ deploy-temporal:
       - echo "Waiting for Kubernetes API to be ready..."
       - sleep 10
       - echo "Testing kubectl connectivity..."
-      - kubectl get nodes --timeout=30s
+      - kubectl get nodes
       - echo "Verifying cluster is healthy..."
       - kubectl get pods -A | head -10
       - |
