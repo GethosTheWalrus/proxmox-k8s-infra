@@ -37,7 +37,13 @@ helm upgrade --install temporal temporal/temporal \
   --set web.image.tag="latest" \
   --set web.config.cors.cookieInsecure=true \
   --set web.config.cors.origins="*" \
-  --set web.config.cors.allowCredentials=true
+  --set web.config.cors.allowCredentials=true \
+  --set elasticsearch.enabled=true \
+  --set elasticsearch.persistence.enabled=true \
+  --set elasticsearch.persistence.storageClass=openebs-hostpath \
+  --set elasticsearch.persistence.size=10Gi \
+  --set elasticsearch.persistence.accessModes[0]=ReadWriteOnce \
+
 
 # Wait for initial deployment
 echo "Waiting for initial deployment..."
