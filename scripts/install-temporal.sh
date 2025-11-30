@@ -13,19 +13,33 @@ helm repo update
 # Create namespace if it doesn't exist
 kubectl create namespace temporal --dry-run=client -o yaml | kubectl apply -f -
 
+# Create Kubernetes secret for PostgreSQL credentials
+kubectl create secret generic temporal-postgresql \
+  --namespace temporal \
+  --from-literal=password=postgres \
+  --dry-run=client -o yaml | kubectl apply -f -
+
 # Install Temporal with Helm
 helm upgrade --install temporal temporal/temporal \
   --namespace temporal \
   --version 0.62.0 \
   --set server.replicaCount=3 \
-  --set cassandra.enabled=true \
-  --set cassandra.replicaCount=3 \
+  --set cassandra.enabled=false \
+  --set postgresql.enabled=false \
+  --set server.config.persistence.default.sql.driver=postgres12 \
+  --set server.config.persistence.default.sql.host=192.168.69.11 \
+  --set server.config.persistence.default.sql.port=5432 \
+  --set server.config.persistence.default.sql.database=temporal \
+  --set server.config.persistence.default.sql.user=postgres \
+  --set server.config.persistence.default.sql.existingSecret=temporal-postgresql \
+  --set server.config.persistence.visibility.sql.driver=postgres12 \
+  --set server.config.persistence.visibility.sql.host=192.168.69.11 \
+  --set server.config.persistence.visibility.sql.port=5432 \
+  --set server.config.persistence.visibility.sql.database=temporal_visibility \
+  --set server.config.persistence.visibility.sql.user=postgres \
+  --set server.config.persistence.visibility.sql.existingSecret=temporal-postgresql \
   --set ui.enabled=true \
   --set ui.replicaCount=2 \
-  --set server.persistence.size=10Gi \
-  --set server.persistence.storageClass=openebs-hostpath \
-  --set cassandra.persistence.size=10Gi \
-  --set cassandra.persistence.storageClass=openebs-hostpath \
   --set schema.setup.enabled=true \
   --set schema.update.enabled=true \
   --set schema.setup.timeout=600s \
@@ -38,11 +52,7 @@ helm upgrade --install temporal temporal/temporal \
   --set web.config.cors.cookieInsecure=true \
   --set web.config.cors.origins="*" \
   --set web.config.cors.allowCredentials=true \
-  --set elasticsearch.enabled=true \
-  --set elasticsearch.persistence.enabled=true \
-  --set elasticsearch.persistence.storageClass=openebs-hostpath \
-  --set elasticsearch.persistence.size=10Gi \
-  --set elasticsearch.persistence.accessModes[0]=ReadWriteOnce \
+  --set elasticsearch.enabled=false \
 
 
 # Wait for initial deployment
