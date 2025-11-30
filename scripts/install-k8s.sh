@@ -34,6 +34,10 @@ echo "Installing containerd..."
 sudo apt install -y containerd
 sudo mkdir -p /etc/containerd
 sudo containerd config default | sudo tee /etc/containerd/config.toml
+
+# Enable SystemdCgroup for containerd (required for kubeadm)
+sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
+
 sudo systemctl restart containerd
 sudo systemctl enable containerd
 
@@ -130,52 +134,56 @@ if [ "$ROLE" == "master" ]; then
     exit 1
   fi
 
+  # Set up kubeconfig for the non-root user
+  echo "Setting up kubeconfig for the non-root user..."
+  USER_HOME=$(eval echo ~${SUDO_USER})
+  mkdir -p /home/k8s/.kube
+  sudo cp -i /etc/kubernetes/admin.conf /home/k8s/.kube/config
+  sudo chown k8s:k8s /home/k8s/.kube/config
+  sudo chmod 600 /home/k8s/.kube/config
+
+  # Also make kubectl accessible for root (optional)
+  mkdir -p /root/.kube
+  cp -i /etc/kubernetes/admin.conf /root/.kube/config
+  chown root:root /root/.kube/config
+  chmod 600 /root/.kube/config
+  
+  export KUBECONFIG=/root/.kube/config
+
   # Wait for the Kubernetes API to be up and running
-  echo "Waiting for Kubernetes API to be ready... (Readiness Check Block Started)"
+  echo "Waiting for Kubernetes API to be ready..."
 
   API_READY=false
   RETRY_COUNT=0
-  while true; do
+  MAX_RETRIES=60
+  while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
     RETRY_COUNT=$((RETRY_COUNT + 1))
-    echo "kubectl cluster-info attempt - Retry: $RETRY_COUNT - Time: $(date +%Y-%m-%d_%H:%M:%S) - Explicit Kubeconfig"
-
-    echo "kubectl cluster-info attempt - Status Code: $API_SERVER_STATUS - Retry: $RETRY_COUNT - Time: $(date +%Y-%m-%d_%H:%M:%S)"
+    echo "kubectl cluster-info attempt - Retry: $RETRY_COUNT/$MAX_RETRIES - Time: $(date +%Y-%m-%d_%H:%M:%S)"
 
     # Get kubectl cluster-info AND status INSIDE the loop
     KUBECTL_OUTPUT=$(kubectl cluster-info 2>&1)
     API_SERVER_STATUS=$?
 
-    # Set up kubeconfig for the non-root user
-    echo "Setting up kubeconfig for the non-root user..."
-    USER_HOME=$(eval echo ~${SUDO_USER})
-    mkdir -p /home/k8s/.kube
-    sudo cp -i --update=none /etc/kubernetes/admin.conf /home/k8s/.kube/config
-    sudo chown k8s:k8s /home/k8s/.kube/config
-    sudo chmod 600 /home/k8s/.kube/config
-    export KUBECONFIG=/home/k8s/.kube/config
-
-    # Also make kubectl accessible for root (optional)
-    mkdir -p /root/.kube
-    cp -i --update=none /etc/kubernetes/admin.conf /root/.kube/config
-    chown root:root /root/.kube/config
-    chmod 600 /root/.kube/config
-
-    # Install Flannel networking for the Kubernetes cluster
-    echo "Installing Flannel networking for the cluster..."
-
-    kubectl apply -f https://github.com/coreos/flannel/raw/master/Documentation/kube-flannel.yml
-
     if [ "$API_SERVER_STATUS" -eq 0 ]; then
       API_READY=true
+      echo "Kubernetes API server is ready!"
       break
     else
-      echo "Kubernetes API server not yet ready. Waiting... (Retry: $RETRY_COUNT)"
+      echo "Kubernetes API server not yet ready. Waiting... (Retry: $RETRY_COUNT/$MAX_RETRIES)"
       echo "kubectl cluster-info output (Retry: $RETRY_COUNT):"
       echo "$KUBECTL_OUTPUT"
     fi
     sleep 5
   done
-  echo "Kubernetes API server is ready!"
+  
+  if [ "$API_READY" != "true" ]; then
+    echo "Kubernetes API server failed to become ready after $MAX_RETRIES attempts. Exiting."
+    exit 1
+  fi
+
+  # Install Flannel networking for the Kubernetes cluster
+  echo "Installing Flannel networking for the cluster..."
+  kubectl apply -f https://github.com/coreos/flannel/raw/master/Documentation/kube-flannel.yml
 
   # Generate the hash for the CA certificate
   echo "Generating the hash for the CA certificate..."
