@@ -1,15 +1,29 @@
 #!/bin/bash
 set -e
 
-echo "Applying MetalLB..."
-kubectl apply -f k8s/01-metallb-install.yaml
-kubectl wait --namespace metallb-system --for=condition=ready pod --selector=app=metallb --timeout=300s
-kubectl apply -f k8s/02-metallb-config.yaml
+echo "Deploying MetalLB with Helm..."
+helm repo add metallb https://metallb.github.io/metallb
+helm repo update
+helm upgrade --install metallb metallb/metallb \
+  --namespace metallb-system \
+  --create-namespace
 
-echo "Applying OpenEBS..."
-kubectl apply -f k8s/04-openebs-install.yaml
-kubectl apply -f k8s/05-openebs-config.yaml
-kubectl wait --for=condition=ready pod -l app=openebs -n openebs --timeout=300s
+kubectl wait --namespace metallb-system --for=condition=ready pod --selector=app.kubernetes.io/name=metallb --timeout=300s
+kubectl apply -f k8s/01-metallb-config.yaml
+
+echo "Deploying OpenEBS with Helm..."
+helm repo add openebs https://openebs.github.io/charts
+helm repo update
+helm upgrade --install openebs openebs/openebs \
+  --namespace openebs \
+  --create-namespace \
+  --set localprovisioner.hostpathClass.isDefaultClass=true \
+  --set localprovisioner.enabled=true \
+  --set ndm.enabled=true \
+  --set ndmOperator.enabled=true
+
+kubectl wait --for=condition=ready pod -l app=openebs -n openebs --timeout=300s || true
+kubectl apply -f k8s/02-openebs-config.yaml
 
 echo "Deploying Temporal with Helm..."
 helm repo add temporal https://temporalio.github.io/helm-charts
@@ -53,7 +67,7 @@ helm upgrade --install temporal temporal/temporal \
   --set web.config.cors.allowCredentials=true \
   --set elasticsearch.enabled=false
 
-kubectl apply -f k8s/09-temporal-config.yaml
+kubectl apply -f k8s/05-temporal-config.yaml
 
 echo "Waiting for Temporal pods..."
 kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=temporal -n temporal --timeout=600s || true
