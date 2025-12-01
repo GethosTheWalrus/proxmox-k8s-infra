@@ -8,7 +8,7 @@ stages:
   - test
   - destroy
 
-# build-python-worker:
+# build-python-worker: 
 #   stage: build
 #   tags:
 #     - shell
