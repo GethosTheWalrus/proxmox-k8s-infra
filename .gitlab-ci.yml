@@ -214,38 +214,14 @@ init-workers:
       - runner_system_failure
       - stuck_or_timeout_failure
 
-deploy-metallb:
+deploy-services:
   stage: deploy
   image:
     name: alpine/k8s:1.29.13
   variables:
     K8S1: 192.168.69.80
-    METALLB_NAMESPACE: metallb-system
-    IP_ADDRESS_RANGE: 192.168.69.95-192.168.69.100
   before_script:
     - apk --no-cache add openssh-client kubectl helm
-  script:
-    - mkdir ~/.kube
-    - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
-    - export KUBECONFIG=~/.kube/config
-    - chmod +x scripts/install-metallb.sh
-    - scripts/install-metallb.sh
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
-      when: always
-    - when: manual
-  dependencies:
-    - init-master
-    - init-workers
-
-deploy-nginx:
-  stage: deploy
-  image:
-    name: alpine/k8s:1.29.13
-  variables:
-    K8S1: 192.168.69.80
-  before_script:
-    - apk --no-cache add openssh-client
   script:
     - mkdir -p ~/.kube
     - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
@@ -253,47 +229,8 @@ deploy-nginx:
     - chmod 600 ~/.kube/config
     - echo "Testing kubectl connectivity..."
     - kubectl get nodes
-    - kubectl create deploy nginx --image nginx
-    - kubectl expose deploy nginx --port 80 --type LoadBalancer
-    - echo "Waiting for nginx deployment to be ready..."
-    - kubectl wait --for=condition=available deployment/nginx --timeout=300s
-    - echo "Nginx deployment successful"
-  rules:
-  - when: always
-  allow_failure: false
-  needs:
-    - init-master
-    - init-workers
-    - deploy-metallb 
-
-deploy-openebs:
-  stage: deploy
-  timeout: 15m
-  image:
-    name: alpine/k8s:1.29.13
-  variables:
-    K8S1: 192.168.69.80
-  before_script:
-    - apk --no-cache add openssh-client kubectl helm
-  script:
-    - mkdir -p ~/.kube
-    - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
-    - export KUBECONFIG=~/.kube/config
-    - chmod 600 ~/.kube/config
-    - echo "Waiting for Kubernetes API to be ready..."
-    - sleep 10
-    - echo "Testing kubectl connectivity..."
-    - kubectl get node
-    - echo "Verifying cluster is healthy..."
-    - kubectl get pods -A | head -10
-    - chmod +x scripts/install-openebs.sh
-    - scripts/install-openebs.sh
-    - echo "Applying storage class..."
-    - kubectl apply -f storage-class.yaml
-    - echo "Verifying storage class..."
-    - kubectl get sc
-    - echo "Verifying OpenEBS pods are running..."
-    - kubectl get pods -n openebs 
+    - chmod +x deploy-all.sh
+    - ./deploy-all.sh
   rules:
     - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
       when: always
@@ -302,82 +239,12 @@ deploy-openebs:
   needs:
     - init-master
     - init-workers
-    - deploy-metallb
   retry:
     max: 2
     when:
       - runner_system_failure
       - stuck_or_timeout_failure
-      - api_failure
-
-deploy-temporal:
-    stage: deploy
-    timeout: 20m
-    image:
-      name: alpine/k8s:1.29.13
-    variables:
-      K8S1: 192.168.69.80
-      LOAD_BALANCER_IP: 192.168.69.98
-      WEB_UI_IP: 192.168.69.97
-    before_script:
-      - apk --no-cache add openssh-client kubectl helm docker-cli
-      - mkdir -p /etc/docker
-      - |
-        cat > /etc/docker/daemon.json << EOF
-        {
-          "insecure-registries": ["git.home:5050"]
-        }
-        EOF
-    script:
-      - mkdir -p ~/.kube
-      - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
-      - export KUBECONFIG=~/.kube/config
-      - chmod 600 ~/.kube/config
-      - echo "Waiting for Kubernetes API to be ready..."
-      - sleep 10
-      - echo "Testing kubectl connectivity..."
-      - kubectl get nodes
-      - echo "Verifying cluster is healthy..."
-      - kubectl get pods -A | head -10
-      - |
-        if [ -n "$DOCKER_USERNAME" ] && [ -n "$DOCKER_PASSWORD" ]; then
-          echo "Attempting to login to Docker Hub..."
-          echo "Username: $DOCKER_USERNAME"
-          echo "Password length: ${#DOCKER_PASSWORD}"
-          docker login docker.io -u $DOCKER_USERNAME -p $DOCKER_PASSWORD || docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
-        else
-          echo "Docker credentials not provided"
-        fi
-      - |
-        if [ -n "$DOCKER_USERNAME" ] && [ -n "$DOCKER_PASSWORD" ]; then
-          echo "Creating Kubernetes secret for Docker Hub..."
-          kubectl create secret docker-registry dockerhub-secret --docker-server=docker.io --docker-username=$DOCKER_USERNAME --docker-password=$DOCKER_PASSWORD --docker-email=$DOCKER_EMAIL --namespace=temporal || true
-        fi
-      - chmod +x scripts/install-temporal.sh
-      - scripts/install-temporal.sh
-      - echo "=== Temporal Deployment Complete ==="
-      - echo "Services:"
-      - kubectl get services -n temporal | grep LoadBalancer
-      - echo ""
-      - echo "Access Information:"
-      - echo "  Temporal Frontend (gRPC):${LOAD_BALANCER_IP}:7233"
-      - echo "  Temporal Web UI:${WEB_UI_IP}:8080"
-    rules:
-      - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
-        when: always
-      - if: '$CI_COMMIT_BRANCH == "main"'
-        when: manual
-    needs:
-    - init-master
-    - init-workers
-    - deploy-metallb
-    - deploy-openebs 
-    retry:
-      max: 2
-      when:
-        - runner_system_failure
-        - stuck_or_timeout_failure
-        - api_failure 
+      - api_failure 
 
 # test-temporal-workflow:
 #   stage: test
