@@ -32,7 +32,7 @@ resource "proxmox_virtual_environment_vm" "k8s1" {
 
   disk {
     datastore_id = var.datastore_id
-    file_id      = var.os_image_local_path
+    file_id      = proxmox_virtual_environment_download_file.ubuntu_cloud_image.id
     interface    = "virtio0"
     iothread     = true
     discard      = "on"
@@ -75,7 +75,7 @@ resource "proxmox_virtual_environment_vm" "k8s2" {
 
   disk {
     datastore_id = var.datastore_id
-    file_id      = var.os_image_local_path
+    file_id      = proxmox_virtual_environment_download_file.ubuntu_cloud_image.id
     interface    = "virtio0"
     iothread     = true
     discard      = "on"
@@ -118,7 +118,7 @@ resource "proxmox_virtual_environment_vm" "k8s3" {
 
   disk {
     datastore_id = var.datastore_id
-    file_id      = var.os_image_local_path
+    file_id      = proxmox_virtual_environment_download_file.ubuntu_cloud_image.id
     interface    = "virtio0"
     iothread     = true
     discard      = "on"
@@ -161,7 +161,7 @@ resource "proxmox_virtual_environment_vm" "k8s4" {
 
   disk {
     datastore_id = var.datastore_id
-    file_id      = var.os_image_local_path
+    file_id      = proxmox_virtual_environment_download_file.ubuntu_cloud_image.id
     interface    = "virtio0"
     iothread     = true
     discard      = "on"
