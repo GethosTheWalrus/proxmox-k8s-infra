@@ -17,7 +17,7 @@ sast:
     name: returntocorp/semgrep:latest
     entrypoint: [""]
   script:
-    - semgrep scan --config=auto --verbose || true
+    - semgrep scan --config=auto --verbose . || true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE !~ /-init$/'
       when: always
