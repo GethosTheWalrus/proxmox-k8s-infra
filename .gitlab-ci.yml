@@ -231,7 +231,7 @@ deploy-metallb:
     - echo "Testing kubectl connectivity..."
     - kubectl get nodes
     - chmod +x deploy-all.sh
-    - ./deploy-all.sh metallb
+    - ./deploy-all.sh metallb-install
   rules:
     - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
       when: always
@@ -240,6 +240,39 @@ deploy-metallb:
   needs:
     - init-master
     - init-workers
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+      - api_failure
+
+verify-metallb:
+  stage: verify
+  timeout: 30m
+  image:
+    name: alpine/k8s:1.29.13
+  variables:
+    K8S1: 192.168.69.80
+  before_script:
+    - apk --no-cache add openssh-client kubectl helm
+  script:
+    - mkdir -p ~/.kube
+    - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
+    - export KUBECONFIG=~/.kube/config
+    - chmod 600 ~/.kube/config
+    - echo "Testing kubectl connectivity..."
+    - kubectl get nodes
+    - chmod +x deploy-all.sh
+    - ./deploy-all.sh metallb-verify
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
+      when: always
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+  needs:
+    - deploy-metallb
+    - init-master
   retry:
     max: 2
     when:
@@ -264,7 +297,7 @@ deploy-openebs:
     - echo "Testing kubectl connectivity..."
     - kubectl get nodes
     - chmod +x deploy-all.sh
-    - ./deploy-all.sh openebs
+    - ./deploy-all.sh openebs-install
   rules:
     - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
       when: always
@@ -272,6 +305,39 @@ deploy-openebs:
       when: manual
   needs:
     - deploy-metallb
+    - init-master
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+      - api_failure
+
+verify-openebs:
+  stage: verify
+  timeout: 30m
+  image:
+    name: alpine/k8s:1.29.13
+  variables:
+    K8S1: 192.168.69.80
+  before_script:
+    - apk --no-cache add openssh-client kubectl helm
+  script:
+    - mkdir -p ~/.kube
+    - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
+    - export KUBECONFIG=~/.kube/config
+    - chmod 600 ~/.kube/config
+    - echo "Testing kubectl connectivity..."
+    - kubectl get nodes
+    - chmod +x deploy-all.sh
+    - ./deploy-all.sh openebs-verify
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
+      when: always
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+  needs:
+    - deploy-openebs
     - init-master
   retry:
     max: 2
@@ -297,7 +363,7 @@ deploy-temporal:
     - echo "Testing kubectl connectivity..."
     - kubectl get nodes
     - chmod +x deploy-all.sh
-    - ./deploy-all.sh temporal
+    - ./deploy-all.sh temporal-install
   rules:
     - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
       when: always
@@ -305,6 +371,39 @@ deploy-temporal:
       when: manual
   needs:
     - deploy-openebs
+    - init-master
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+      - api_failure
+
+verify-temporal:
+  stage: verify
+  timeout: 30m
+  image:
+    name: alpine/k8s:1.29.13
+  variables:
+    K8S1: 192.168.69.80
+  before_script:
+    - apk --no-cache add openssh-client kubectl helm
+  script:
+    - mkdir -p ~/.kube
+    - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
+    - export KUBECONFIG=~/.kube/config
+    - chmod 600 ~/.kube/config
+    - echo "Testing kubectl connectivity..."
+    - kubectl get nodes
+    - chmod +x deploy-all.sh
+    - ./deploy-all.sh temporal-verify
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
+      when: always
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+  needs:
+    - deploy-temporal
     - init-master
   retry:
     max: 2

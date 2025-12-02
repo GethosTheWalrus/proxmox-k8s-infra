@@ -5,19 +5,22 @@ COMPONENT=$1
 
 echo "Starting deployment at $(date)"
 
-deploy_metallb() {
+deploy_metallb_install() {
   echo "Deploying MetalLB with Helm..."
   helm repo add metallb https://metallb.github.io/metallb
   helm repo update
   helm upgrade --install metallb metallb/metallb \
     --namespace metallb-system \
     --create-namespace
+}
 
+deploy_metallb_verify() {
+  echo "Verifying MetalLB..."
   kubectl wait --namespace metallb-system --for=condition=ready pod --selector=app.kubernetes.io/name=metallb --timeout=300s
   kubectl apply -f k8s/01-metallb-config.yaml
 }
 
-deploy_openebs() {
+deploy_openebs_install() {
   echo "Deploying OpenEBS with Helm..."
   helm repo add openebs https://openebs.github.io/charts
   helm repo update
@@ -29,11 +32,14 @@ deploy_openebs() {
     --set ndm.enabled=true \
     --set ndmOperator.enabled=true \
     --set localprovisioner.hostpathClass.basePath=/var/openebs/local
+}
 
+deploy_openebs_verify() {
+  echo "Verifying OpenEBS..."
   kubectl wait --for=condition=ready pod -l app=openebs -n openebs --timeout=300s || true
 }
 
-deploy_temporal() {
+deploy_temporal_install() {
   echo "Deploying Temporal with Helm..."
   helm repo add temporal https://temporalio.github.io/helm-charts
   helm repo update
@@ -77,22 +83,33 @@ deploy_temporal() {
     --set elasticsearch.enabled=false
 
   kubectl apply -f k8s/05-temporal-config.yaml
+}
 
-  echo "Waiting for Temporal pods..."
+deploy_temporal_verify() {
+  echo "Verifying Temporal..."
   kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=temporal -n temporal --timeout=600s || true
 }
 
-if [ "$COMPONENT" == "metallb" ]; then
-  deploy_metallb
-elif [ "$COMPONENT" == "openebs" ]; then
-  deploy_openebs
-elif [ "$COMPONENT" == "temporal" ]; then
-  deploy_temporal
+if [ "$COMPONENT" == "metallb-install" ]; then
+  deploy_metallb_install
+elif [ "$COMPONENT" == "metallb-verify" ]; then
+  deploy_metallb_verify
+elif [ "$COMPONENT" == "openebs-install" ]; then
+  deploy_openebs_install
+elif [ "$COMPONENT" == "openebs-verify" ]; then
+  deploy_openebs_verify
+elif [ "$COMPONENT" == "temporal-install" ]; then
+  deploy_temporal_install
+elif [ "$COMPONENT" == "temporal-verify" ]; then
+  deploy_temporal_verify
 else
   echo "No specific component selected, deploying all..."
-  deploy_metallb
-  deploy_openebs
-  deploy_temporal
+  deploy_metallb_install
+  deploy_metallb_verify
+  deploy_openebs_install
+  deploy_openebs_verify
+  deploy_temporal_install
+  deploy_temporal_verify
 fi
 
 echo "Deployment complete at $(date)!"
