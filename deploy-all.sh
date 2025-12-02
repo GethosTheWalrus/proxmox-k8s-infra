@@ -20,10 +20,10 @@ helm upgrade --install openebs openebs/openebs \
   --set localprovisioner.hostpathClass.isDefaultClass=true \
   --set localprovisioner.enabled=true \
   --set ndm.enabled=true \
-  --set ndmOperator.enabled=true
+  --set ndmOperator.enabled=true \
+  --set localprovisioner.hostpathClass.basePath=/var/openebs/local
 
 kubectl wait --for=condition=ready pod -l app=openebs -n openebs --timeout=300s || true
-kubectl apply -f k8s/02-openebs-config.yaml
 
 echo "Deploying Temporal with Helm..."
 helm repo add temporal https://temporalio.github.io/helm-charts
