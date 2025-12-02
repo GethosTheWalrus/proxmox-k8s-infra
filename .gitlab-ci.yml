@@ -3,6 +3,7 @@ variables:
   RUNNER_SCRIPT_TIMEOUT: 30m 
 
 stages: 
+  - sast
   - build
   - configure
   - deploy
@@ -10,125 +11,17 @@ stages:
   - test
   - destroy
 
-# build-python-worker: 
-#   stage: build
-#   tags:
-#     - shell
-#   variables:
-#     SHELL: /bin/bash
-#   before_script:
-#     - |
-#       echo "Current user: $(whoami)"
-#       echo "Current directory: $(pwd)"
-#       echo "Environment variables:"
-#       env | sort
-#       source ~/.bashrc || true
-#       echo "PATH: $PATH"
-#       which docker || echo "Docker not found"
-#       docker info || echo "Docker not accessible"
-#   script:
-#     - cd workers/python
-#     - docker build -t ${REGISTRY_PATH}/python-worker:latest .
-#     - docker push ${REGISTRY_PATH}/python-worker:latest
-#   rules:
-#     - if: $CI_COMMIT_BRANCH == "main"
-#       when: always
-#     - when: manual
-#   retry:
-#     max: 2
-#     when:
-#       - runner_system_failure
-#       - stuck_or_timeout_failure
-
-# build-typescript-worker:
-#   stage: build
-#   tags:
-#     - shell
-#   variables:
-#     SHELL: /bin/bash
-#   before_script:
-#     - |
-#       echo "Current user: $(whoami)"
-#       echo "Current directory: $(pwd)"
-#       echo "Environment variables:"
-#       env | sort
-#       source ~/.bashrc || true
-#       echo "PATH: $PATH"
-#       which docker || echo "Docker not found"
-#       docker info || echo "Docker not accessible"
-#   script:
-#     - cd workers/typescript
-#     - docker build -t ${REGISTRY_PATH}/typescript-worker:latest .
-#     - docker push ${REGISTRY_PATH}/typescript-worker:latest
-#   rules:
-#     - if: $CI_COMMIT_BRANCH == "main"
-#       when: always
-#     - when: manual
-#   retry:
-#     max: 2
-#     when:
-#       - runner_system_failure
-#       - stuck_or_timeout_failure
-
-# build-csharp-worker:
-#   stage: build
-#   tags:
-#     - shell
-#   variables:
-#     SHELL: /bin/bash
-#   before_script:
-#     - |
-#       echo "Current user: $(whoami)"
-#       echo "Current directory: $(pwd)"
-#       echo "Environment variables:"
-#       env | sort
-#       source ~/.bashrc || true
-#       echo "PATH: $PATH"
-#       which docker || echo "Docker not found"
-#       docker info || echo "Docker not accessible"
-#   script:
-#     - cd workers/csharp
-#     - docker build -t ${REGISTRY_PATH}/csharp-worker:latest .
-#     - docker push ${REGISTRY_PATH}/csharp-worker:latest
-#   rules:
-#     - if: $CI_COMMIT_BRANCH == "main"
-#       when: always
-#     - when: manual
-#   retry:
-#     max: 2
-#     when:
-#       - runner_system_failure
-#       - stuck_or_timeout_failure
-
-# build-go-worker:
-#   stage: build
-#   tags:
-#     - shell
-#   variables:
-#     SHELL: /bin/bash
-#   before_script:
-#     - |
-#       echo "Current user: $(whoami)"
-#       echo "Current directory: $(pwd)"
-#       echo "Environment variables:"
-#       env | sort
-#       source ~/.bashrc || true
-#       echo "PATH: $PATH"
-#       which docker || echo "Docker not found"
-#       docker info || echo "Docker not accessible"
-#   script:
-#     - cd workers/go
-#     - docker build -t ${REGISTRY_PATH}/go-worker:latest .
-#     - docker push ${REGISTRY_PATH}/go-worker:latest
-#   rules:
-#     - if: $CI_COMMIT_BRANCH == "main"
-#       when: always
-#     - when: manual
-#   retry:
-#     max: 2
-#     when:
-#       - runner_system_failure
-#       - stuck_or_timeout_failure
+sast:
+  stage: sast
+  image:
+    name: returntocorp/semgrep
+    entrypoint: [""]
+  script:
+    - semgrep scan --config=auto --verbose || true
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE !~ /-init$/'
+      when: always
+  allow_failure: true
 
 deploy-infra:
   stage: build
@@ -151,7 +44,8 @@ deploy-infra:
     - chmod 600 key
     - cat key
   rules:
-  - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
+      when: always
   artifacts:
     paths:
       - scripts
@@ -172,8 +66,8 @@ init-master:
   - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "sudo ROLE=$ROLE TOKEN=$TOKEN bash -s" < scripts/install-k8s.sh
   - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/hash $CI_PROJECT_DIR/hash
   rules:
-  - if: $CI_COMMIT_TITLE =~ /-init$/
-    when: always
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
+      when: always
   allow_failure: false
   needs:
     - deploy-infra
@@ -203,12 +97,12 @@ init-workers:
     - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S3" "sudo ROLE=$ROLE bash -s" < $CI_PROJECT_DIR/scripts/install-k8s.sh $K8S1 $JOINTOKEN $(cat $CI_PROJECT_DIR/hash)
     - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S4" "sudo ROLE=$ROLE bash -s" < $CI_PROJECT_DIR/scripts/install-k8s.sh $K8S1 $JOINTOKEN $(cat $CI_PROJECT_DIR/hash)
   rules:
-  - if: $CI_COMMIT_TITLE =~ /-init$/
-    when: always
-    allow_failure: false
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
+      when: always
   needs:
     - deploy-infra
     - init-master
+  allow_failure: false
   retry:
     max: 2
     when:
@@ -412,94 +306,6 @@ verify-temporal:
       - runner_system_failure
       - stuck_or_timeout_failure
       - api_failure 
-
-# test-temporal-workflow:
-#   stage: test
-#   tags:
-#     - shell
-#   variables:
-#     TEMPORAL_HOST: "192.168.69.98:7233"
-#     TEMPORAL_NAMESPACE: "default"
-#   before_script:
-#     - python3 -m pip install --user temporalio requests
-#   script:
-#     - |
-#       cat > test_workflow.py << 'EOF'
-#       import asyncio
-#       import os
-#       from datetime import timedelta
-#       from temporalio.client import Client
-#       from temporalio.worker import Worker
-#       from temporalio import workflow, activity
-#       from temporalio.common import RetryPolicy
-
-#       @workflow.defn
-#       class TestWorkflow:
-#           @workflow.run
-#           async def run(self, name: str) -> str:
-#               # Start Python activity
-#               python_result = await workflow.execute_activity(
-#                   python_activity,
-#                   "Hello from Python",
-#                   start_to_close_timeout=timedelta(seconds=5),
-#                   retry_policy=RetryPolicy(maximum_attempts=3)
-#               )
-              
-#               # Start TypeScript activity
-#               typescript_result = await workflow.execute_activity(
-#                   "ProcessTypeScript",
-#                   "Hello from TypeScript",
-#                   start_to_close_timeout=timedelta(seconds=5),
-#                   retry_policy=RetryPolicy(maximum_attempts=3)
-#               )
-              
-#               # Start Go activity
-#               go_result = await workflow.execute_activity(
-#                   "ProcessGo",
-#                   "Hello from Go",
-#                   start_to_close_timeout=timedelta(seconds=5),
-#                   retry_policy=RetryPolicy(maximum_attempts=3)
-#               )
-              
-#               return f"Python: {python_result}, TypeScript: {typescript_result}, Go: {go_result}"
-
-#       @activity.defn
-#       async def python_activity(message: str) -> str:
-#           return f"Python says: {message}"
-
-#       async def main():
-#           # Connect to Temporal server using the LoadBalancer IP
-#           client = await Client.connect(
-#               os.environ["TEMPORAL_HOST"],
-#               namespace=os.environ["TEMPORAL_NAMESPACE"]
-#           )
-          
-#           # Start the workflow
-#           handle = await client.start_workflow(
-#               TestWorkflow.run,
-#               "Temporal",
-#               id="test-workflow",
-#               task_queue="python-task-queue"
-#           )
-          
-#           # Wait for the result
-#           result = await handle.result()
-#           print(f"Workflow result: {result}")
-
-#       if __name__ == "__main__":
-#           asyncio.run(main())
-#       EOF
-
-#     - python3 test_workflow.py
-#   rules:
-#     - if: $CI_COMMIT_BRANCH == "main"
-#       when: always
-#     - when: manual
-#   environment:
-#     name: production
-#   needs:
-#     - deploy-temporal
-#     - deploy-temporal-workers
 
 destroy-cluster:
   stage: destroy
