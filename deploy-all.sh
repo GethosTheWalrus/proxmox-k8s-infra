@@ -93,11 +93,17 @@ deploy_temporal_install() {
 
 deploy_temporal_verify() {
   echo "Verifying Temporal..."
-  kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=temporal -n temporal --timeout=600s
-  
-  # Create the default namespace if it doesn't exist
-  echo "Creating Temporal default namespace..."
-  kubectl exec -n temporal deployment/temporal-admintools -- tctl --namespace default namespace register 2>/dev/null || echo "Namespace 'default' already exists"
+  # Wait for core Temporal services (excluding jobs and other components)
+  kubectl wait --for=condition=ready pod \
+    -l app.kubernetes.io/name=temporal,app.kubernetes.io/component=frontend \
+    -n temporal --timeout=600s
+  kubectl wait --for=condition=ready pod \
+    -l app.kubernetes.io/name=temporal,app.kubernetes.io/component=history \
+    -n temporal --timeout=600s
+  kubectl wait --for=condition=ready pod \
+    -l app.kubernetes.io/name=temporal,app.kubernetes.io/component=matching \
+    -n temporal --timeout=600s
+  echo "All Temporal core services are ready"
 }
 
 if [ "$COMPONENT" == "metallb-install" ]; then
