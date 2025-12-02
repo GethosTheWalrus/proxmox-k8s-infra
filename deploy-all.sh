@@ -108,7 +108,11 @@ deploy_temporal_verify() {
 
 deploy_dashboard_install() {
   echo "Deploying Kubernetes Dashboard..."
-  kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml
+  helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/
+  helm repo update
+  helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard \
+    --create-namespace \
+    --namespace kubernetes-dashboard
 }
 
 deploy_dashboard_verify() {
