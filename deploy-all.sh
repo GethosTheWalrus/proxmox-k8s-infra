@@ -64,12 +64,14 @@ deploy_temporal_install() {
     --set server.config.persistence.default.sql.database=temporal \
     --set server.config.persistence.default.sql.user=postgres \
     --set server.config.persistence.default.sql.existingSecret=temporal-postgresql \
+    --set server.config.persistence.default.sql.maxConns=10 \
     --set server.config.persistence.visibility.driver=sql \
     --set server.config.persistence.visibility.sql.driver=postgres12 \
     --set server.config.persistence.visibility.sql.host=192.168.69.11 \
     --set server.config.persistence.visibility.sql.port=5432 \
     --set server.config.persistence.visibility.sql.database=temporal_visibility \
     --set server.config.persistence.visibility.sql.user=postgres \
+    --set server.config.persistence.visibility.sql.maxConns=10 \
     --set server.config.persistence.visibility.sql.existingSecret=temporal-postgresql \
     --set ui.enabled=true \
     --set ui.replicaCount=2 \
