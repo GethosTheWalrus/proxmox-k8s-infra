@@ -133,8 +133,10 @@ deploy-metallb:
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: manual
   needs:
-    - init-master
-    - init-workers
+    - job: init-master
+      optional: true
+    - job: init-workers
+      optional: true
   retry:
     max: 2
     when:
@@ -166,8 +168,10 @@ verify-metallb:
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: manual
   needs:
-    - deploy-metallb
-    - init-master
+    - job: deploy-metallb
+      optional: true
+    - job: init-master
+      optional: true
   retry:
     max: 2
     when:
@@ -199,8 +203,10 @@ deploy-openebs:
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: manual
   needs:
-    - deploy-metallb
-    - init-master
+    - job: deploy-metallb
+      optional: true
+    - job: init-master
+      optional: true
   retry:
     max: 2
     when:
@@ -232,8 +238,10 @@ verify-openebs:
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: manual
   needs:
-    - deploy-openebs
-    - init-master
+    - job: deploy-openebs
+      optional: true
+    - job: init-master
+      optional: true
   retry:
     max: 2
     when:
@@ -265,8 +273,10 @@ deploy-temporal:
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: manual
   needs:
-    - deploy-openebs
-    - init-master
+    - job: deploy-openebs
+      optional: true
+    - job: init-master
+      optional: true
   retry:
     max: 2
     when:
@@ -298,8 +308,10 @@ verify-temporal:
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: manual
   needs:
-    - deploy-temporal
-    - init-master
+    - job: deploy-temporal
+      optional: true
+    - job: init-master
+      optional: true
   retry:
     max: 2
     when:
