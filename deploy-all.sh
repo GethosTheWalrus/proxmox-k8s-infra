@@ -106,6 +106,17 @@ deploy_temporal_verify() {
   echo "All Temporal core services are ready"
 }
 
+deploy_dashboard_install() {
+  echo "Deploying Kubernetes Dashboard..."
+  kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml
+}
+
+deploy_dashboard_verify() {
+  echo "Verifying Kubernetes Dashboard..."
+  kubectl wait --namespace kubernetes-dashboard --for=condition=ready pod --selector=k8s-app=kubernetes-dashboard --timeout=300s
+  echo "Kubernetes Dashboard is ready"
+}
+
 if [ "$COMPONENT" == "metallb-install" ]; then
   deploy_metallb_install
 elif [ "$COMPONENT" == "metallb-verify" ]; then
@@ -118,6 +129,10 @@ elif [ "$COMPONENT" == "temporal-install" ]; then
   deploy_temporal_install
 elif [ "$COMPONENT" == "temporal-verify" ]; then
   deploy_temporal_verify
+elif [ "$COMPONENT" == "dashboard-install" ]; then
+  deploy_dashboard_install
+elif [ "$COMPONENT" == "dashboard-verify" ]; then
+  deploy_dashboard_verify
 else
   echo "No specific component selected, deploying all..."
   deploy_metallb_install
@@ -126,6 +141,8 @@ else
   deploy_openebs_verify
   deploy_temporal_install
   deploy_temporal_verify
+  deploy_dashboard_install
+  deploy_dashboard_verify
 fi
 
 echo "Deployment complete at $(date)!"
