@@ -5,6 +5,7 @@ stages:
   - build
   - configure
   - deploy
+  - verify
   - test
   - destroy
 
