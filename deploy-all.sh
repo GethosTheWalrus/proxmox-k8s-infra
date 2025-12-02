@@ -36,13 +36,14 @@ deploy_openebs_install() {
 
 deploy_openebs_verify() {
   echo "Verifying OpenEBS..."
-  kubectl wait --for=condition=ready pod -l app=openebs -n openebs --timeout=300s || true
+  kubectl wait --for=condition=ready pod -l app=openebs -n openebs --timeout=300s
 }
 
 deploy_temporal_install() {
   echo "Deploying Temporal with Helm..."
   
-  # Apply the PostgreSQL secret first
+  # Create namespace and apply the PostgreSQL secret first
+  kubectl create namespace temporal --dry-run=client -o yaml | kubectl apply -f -
   kubectl apply -f k8s/04-temporal-secret.yaml
   
   helm repo add temporal https://temporalio.github.io/helm-charts
@@ -90,7 +91,7 @@ deploy_temporal_install() {
 
 deploy_temporal_verify() {
   echo "Verifying Temporal..."
-  kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=temporal -n temporal --timeout=600s || true
+  kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=temporal -n temporal --timeout=600s
   
   # Create the default namespace if it doesn't exist
   echo "Creating Temporal default namespace..."
