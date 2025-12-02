@@ -216,6 +216,7 @@ init-workers:
 
 deploy-services:
   stage: deploy
+  timeout: 30m
   image:
     name: alpine/k8s:1.29.13
   variables:
