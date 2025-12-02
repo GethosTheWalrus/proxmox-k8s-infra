@@ -272,6 +272,7 @@ deploy-openebs:
       when: manual
   needs:
     - deploy-metallb
+    - init-master
   retry:
     max: 2
     when:
@@ -304,6 +305,7 @@ deploy-temporal:
       when: manual
   needs:
     - deploy-openebs
+    - init-master
   retry:
     max: 2
     when:
