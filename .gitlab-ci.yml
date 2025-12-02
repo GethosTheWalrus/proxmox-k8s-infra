@@ -156,7 +156,6 @@ deploy-infra:
     paths:
       - scripts
       - key
-      - storage-class.yaml
 
 init-master:
   stage: configure
