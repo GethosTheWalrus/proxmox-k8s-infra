@@ -132,11 +132,6 @@ deploy-metallb:
       when: always
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: manual
-  needs:
-    - job: init-master
-      optional: true
-    - job: init-workers
-      optional: true
   retry:
     max: 2
     when:
@@ -167,11 +162,6 @@ verify-metallb:
       when: always
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: manual
-  needs:
-    - job: deploy-metallb
-      optional: true
-    - job: init-master
-      optional: true
   retry:
     max: 2
     when:
@@ -202,11 +192,6 @@ deploy-openebs:
       when: always
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: manual
-  needs:
-    - job: deploy-metallb
-      optional: true
-    - job: init-master
-      optional: true
   retry:
     max: 2
     when:
@@ -237,11 +222,6 @@ verify-openebs:
       when: always
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: manual
-  needs:
-    - job: deploy-openebs
-      optional: true
-    - job: init-master
-      optional: true
   retry:
     max: 2
     when:
@@ -272,11 +252,6 @@ deploy-temporal:
       when: always
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: manual
-  needs:
-    - job: deploy-openebs
-      optional: true
-    - job: init-master
-      optional: true
   retry:
     max: 2
     when:
@@ -307,17 +282,12 @@ verify-temporal:
       when: always
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: manual
-  needs:
-    - job: deploy-temporal
-      optional: true
-    - job: init-master
-      optional: true
   retry:
     max: 2
     when:
       - runner_system_failure
       - stuck_or_timeout_failure
-      - api_failure 
+      - api_failure
 
 deploy-dashboard:
   stage: deploy
@@ -342,11 +312,6 @@ deploy-dashboard:
       when: always
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: manual
-  needs:
-    - job: deploy-metallb
-      optional: true
-    - job: init-master
-      optional: true
   retry:
     max: 2
     when:
@@ -377,11 +342,6 @@ verify-dashboard:
       when: always
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: manual
-  needs:
-    - job: deploy-dashboard
-      optional: true
-    - job: init-master
-      optional: true
   retry:
     max: 2
     when:
