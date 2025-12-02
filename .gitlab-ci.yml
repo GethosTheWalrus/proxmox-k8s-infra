@@ -14,7 +14,7 @@ stages:
 sast:
   stage: sast
   image:
-    name: returntocorp/semgrep
+    name: returntocorp/semgrep:latest
     entrypoint: [""]
   script:
     - semgrep scan --config=auto --verbose || true
