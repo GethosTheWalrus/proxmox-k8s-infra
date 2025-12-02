@@ -41,12 +41,16 @@ deploy_openebs_verify() {
 
 deploy_temporal_install() {
   echo "Deploying Temporal with Helm..."
+  
+  # Apply the PostgreSQL secret first
+  kubectl apply -f k8s/04-temporal-secret.yaml
+  
   helm repo add temporal https://temporalio.github.io/helm-charts
   helm repo update
   helm upgrade --install temporal temporal/temporal \
     --namespace temporal \
     --create-namespace \
-    --version 0.62.0 \
+    --version 0.72.0 \
     --set server.replicaCount=3 \
     --set cassandra.enabled=false \
     --set postgresql.enabled=false \
@@ -76,7 +80,6 @@ deploy_temporal_install() {
     --set web.replicaCount=2 \
     --set web.service.type=ClusterIP \
     --set web.service.port=8080 \
-    --set web.image.tag="latest" \
     --set web.config.cors.cookieInsecure=true \
     --set web.config.cors.origins="*" \
     --set web.config.cors.allowCredentials=true \
@@ -88,6 +91,10 @@ deploy_temporal_install() {
 deploy_temporal_verify() {
   echo "Verifying Temporal..."
   kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=temporal -n temporal --timeout=600s || true
+  
+  # Create the default namespace if it doesn't exist
+  echo "Creating Temporal default namespace..."
+  kubectl exec -n temporal deployment/temporal-admintools -- tctl --namespace default namespace register 2>/dev/null || echo "Namespace 'default' already exists"
 }
 
 if [ "$COMPONENT" == "metallb-install" ]; then

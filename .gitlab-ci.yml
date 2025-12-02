@@ -1,5 +1,6 @@
 variables:
   REGISTRY_PATH: "git.home:5050/mike/proxmox-k8s-infra" 
+  RUNNER_SCRIPT_TIMEOUT: 30m 
 
 stages: 
   - build
