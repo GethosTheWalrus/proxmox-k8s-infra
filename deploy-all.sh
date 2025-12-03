@@ -112,7 +112,9 @@ deploy_dashboard_install() {
   helm repo update
   helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard \
     --create-namespace \
-    --namespace kubernetes-dashboard
+    --namespace kubernetes-dashboard \
+    --set kong.proxy.http.enabled=true \
+    --set kong.proxy.type=LoadBalancer
 }
 
 deploy_dashboard_verify() {
