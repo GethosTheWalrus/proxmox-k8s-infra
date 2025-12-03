@@ -115,12 +115,18 @@ deploy_dashboard_install() {
     --namespace kubernetes-dashboard \
     --set kong.proxy.http.enabled=true \
     --set kong.proxy.type=LoadBalancer
+  
+  # Create admin user for dashboard access
+  kubectl apply -f k8s/06-dashboard-admin.yaml
 }
 
 deploy_dashboard_verify() {
   echo "Verifying Kubernetes Dashboard..."
   kubectl wait --namespace kubernetes-dashboard --for=condition=ready pod --selector=k8s-app=kubernetes-dashboard --timeout=300s
   echo "Kubernetes Dashboard is ready"
+  echo ""
+  echo "To get admin token, run:"
+  echo "kubectl -n kubernetes-dashboard create token admin-user"
 }
 
 if [ "$COMPONENT" == "metallb-install" ]; then
