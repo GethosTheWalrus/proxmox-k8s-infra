@@ -118,6 +118,11 @@ deploy-metallb:
     K8S1: 192.168.69.80
   before_script:
     - apk --no-cache add openssh-client kubectl helm
+    - |
+      if [ ! -f key ]; then
+        echo "$SSHKEY" > key
+        chmod 600 key
+      fi
   script:
     - mkdir -p ~/.kube
     - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
@@ -178,6 +183,11 @@ deploy-openebs:
     K8S1: 192.168.69.80
   before_script:
     - apk --no-cache add openssh-client kubectl helm
+    - |
+      if [ ! -f key ]; then
+        echo "$SSHKEY" > key
+        chmod 600 key
+      fi
   script:
     - mkdir -p ~/.kube
     - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
@@ -238,6 +248,11 @@ deploy-temporal:
     K8S1: 192.168.69.80
   before_script:
     - apk --no-cache add openssh-client kubectl helm
+    - |
+      if [ ! -f key ]; then
+        echo "$SSHKEY" > key
+        chmod 600 key
+      fi
   script:
     - mkdir -p ~/.kube
     - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
@@ -298,6 +313,11 @@ deploy-dashboard:
     K8S1: 192.168.69.80
   before_script:
     - apk --no-cache add openssh-client kubectl helm
+    - |
+      if [ ! -f key ]; then
+        echo "$SSHKEY" > key
+        chmod 600 key
+      fi
   script:
     - mkdir -p ~/.kube
     - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
