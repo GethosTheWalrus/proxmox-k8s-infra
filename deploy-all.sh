@@ -133,7 +133,7 @@ deploy_dashboard_install() {
 
 deploy_dashboard_verify() {
   echo "Verifying Kubernetes Dashboard..."
-  kubectl wait --namespace kubernetes-dashboard --for=condition=ready pod --selector=app.kubernetes.io/name=kubernetes-dashboard --timeout=300s
+  kubectl wait --namespace kubernetes-dashboard --for=condition=ready pod --selector=app.kubernetes.io/name=kubernetes-dashboard-web --timeout=300s
   echo "Kubernetes Dashboard is ready"
   echo ""
   echo "To get admin token, run:"
