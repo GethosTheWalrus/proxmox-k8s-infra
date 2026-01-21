@@ -81,15 +81,20 @@ deploy_temporal_install() {
     --set server.resources.requests.memory=1Gi \
     --set server.resources.limits.memory=2Gi \
     --set admintools.resources.limits.memory=512Mi \
-    --set ui.enabled=true \
-    --set ui.replicaCount=2 \
-    --set ui.resources.requests.memory=256Mi \
-    --set ui.resources.limits.memory=1Gi \
+    --set ui.enabled=false \
     --set schema.setup.enabled=true \
     --set schema.update.enabled=true \
     --set schema.setup.timeout=600s \
     --set schema.update.timeout=600s \
-    --set web.enabled=false \
+    --set web.enabled=true \
+    --set web.replicaCount=2 \
+    --set web.resources.requests.memory=256Mi \
+    --set web.resources.limits.memory=512Mi \
+    --set web.service.type=ClusterIP \
+    --set web.service.port=8080 \
+    --set web.config.cors.cookieInsecure=true \
+    --set web.config.cors.origins="*" \
+    --set web.config.cors.allowCredentials=true \
     --set elasticsearch.enabled=false
 
   kubectl apply -f k8s/05-temporal-config.yaml
