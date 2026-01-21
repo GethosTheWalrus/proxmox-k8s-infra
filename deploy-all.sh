@@ -11,7 +11,9 @@ deploy_metallb_install() {
   helm repo update
   helm upgrade --install metallb metallb/metallb \
     --namespace metallb-system \
-    --create-namespace
+    --create-namespace \
+    --set controller.resources.limits.memory=256Mi \
+    --set speaker.resources.limits.memory=256Mi
 }
 
 deploy_metallb_verify() {
@@ -31,7 +33,9 @@ deploy_openebs_install() {
     --set localprovisioner.enabled=true \
     --set ndm.enabled=true \
     --set ndmOperator.enabled=true \
-    --set localprovisioner.hostpathClass.basePath=/var/openebs/local
+    --set localprovisioner.hostpathClass.basePath=/var/openebs/local \
+    --set localprovisioner.resources.limits.memory=1Gi \
+    --set ndm.resources.limits.memory=512Mi
 }
 
 deploy_openebs_verify() {
@@ -73,19 +77,19 @@ deploy_temporal_install() {
     --set server.config.persistence.visibility.sql.user=postgres \
     --set server.config.persistence.visibility.sql.maxConns=10 \
     --set server.config.persistence.visibility.sql.existingSecret=temporal-postgresql \
+    --set server.resources.requests.cpu=100m \
+    --set server.resources.requests.memory=1Gi \
+    --set server.resources.limits.memory=2Gi \
+    --set admintools.resources.limits.memory=512Mi \
     --set ui.enabled=true \
     --set ui.replicaCount=2 \
+    --set ui.resources.requests.memory=256Mi \
+    --set ui.resources.limits.memory=1Gi \
     --set schema.setup.enabled=true \
     --set schema.update.enabled=true \
     --set schema.setup.timeout=600s \
     --set schema.update.timeout=600s \
-    --set web.enabled=true \
-    --set web.replicaCount=2 \
-    --set web.service.type=ClusterIP \
-    --set web.service.port=8080 \
-    --set web.config.cors.cookieInsecure=true \
-    --set web.config.cors.origins="*" \
-    --set web.config.cors.allowCredentials=true \
+    --set web.enabled=false \
     --set elasticsearch.enabled=false
 
   kubectl apply -f k8s/05-temporal-config.yaml
@@ -114,7 +118,9 @@ deploy_dashboard_install() {
     --create-namespace \
     --namespace kubernetes-dashboard \
     --set kong.proxy.http.enabled=true \
-    --set kong.proxy.type=LoadBalancer
+    --set kong.proxy.type=LoadBalancer \
+    --set resources.limits.memory=256Mi \
+    --set metricsScraper.resources.limits.memory=256Mi
   
   # Create admin user for dashboard access
   kubectl apply -f k8s/06-dashboard-admin.yaml
