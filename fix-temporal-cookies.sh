@@ -3,10 +3,13 @@
 
 echo "Upgrading Temporal deployment to fix secure cookie issue..."
 
+# The Temporal UI sets cookies as secure by default
+# We need to explicitly disable this for HTTP access
 helm upgrade temporal temporal/temporal \
   --namespace temporal \
   --reuse-values \
-  --set web.config.auth.enabled=false
+  --set web.additionalEnv[0].name=TEMPORAL_CSRF_COOKIE_INSECURE \
+  --set web.additionalEnv[0].value=true
 
 echo ""
 echo "Waiting for web pods to restart..."

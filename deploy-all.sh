@@ -95,7 +95,8 @@ deploy_temporal_install() {
     --set web.config.cors.cookieInsecure=true \
     --set web.config.cors.origins="*" \
     --set web.config.cors.allowCredentials=true \
-    --set web.config.auth.enabled=false \
+    --set web.additionalEnv[0].name=TEMPORAL_CSRF_COOKIE_INSECURE \
+    --set-string web.additionalEnv[0].value=true \
     --set elasticsearch.enabled=false
 
   kubectl apply -f k8s/05-temporal-config.yaml
