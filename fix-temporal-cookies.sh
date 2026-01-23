@@ -1,5 +1,5 @@
 #!/bin/bash
-# This script fixes the secure cookie issue for Temporal Web UI over HTTP
+# This script fixes the secure cookie issue for Temporal Web UI over HTTP 
 
 echo "Upgrading Temporal deployment to fix secure cookie issue..."
 
