@@ -50,6 +50,15 @@ deploy_temporal_install() {
   kubectl create namespace temporal --dry-run=client -o yaml | kubectl apply -f -
   kubectl apply -f k8s/04-temporal-secret.yaml
   
+  # Deploy PgBouncer first for connection pooling
+  echo "Deploying PgBouncer connection pooler..."
+  kubectl apply -f k8s/07-pgbouncer.yaml
+  
+  # Wait for PgBouncer to be ready
+  echo "Waiting for PgBouncer to be ready..."
+  kubectl wait --for=condition=ready pod -l app=pgbouncer -n temporal --timeout=120s
+  echo "PgBouncer is ready"
+  
   helm repo add temporal https://temporalio.github.io/helm-charts
   helm repo update
   helm upgrade --install temporal temporal/temporal \
@@ -63,7 +72,7 @@ deploy_temporal_install() {
     --set grafana.enabled=false \
     --set server.config.persistence.default.driver=sql \
     --set server.config.persistence.default.sql.driver=postgres12 \
-    --set server.config.persistence.default.sql.host=192.168.69.11 \
+    --set server.config.persistence.default.sql.host=pgbouncer.temporal.svc.cluster.local \
     --set server.config.persistence.default.sql.port=5432 \
     --set server.config.persistence.default.sql.database=temporal \
     --set server.config.persistence.default.sql.user=postgres \
@@ -71,7 +80,7 @@ deploy_temporal_install() {
     --set server.config.persistence.default.sql.maxConns=10 \
     --set server.config.persistence.visibility.driver=sql \
     --set server.config.persistence.visibility.sql.driver=postgres12 \
-    --set server.config.persistence.visibility.sql.host=192.168.69.11 \
+    --set server.config.persistence.visibility.sql.host=pgbouncer.temporal.svc.cluster.local \
     --set server.config.persistence.visibility.sql.port=5432 \
     --set server.config.persistence.visibility.sql.database=temporal_visibility \
     --set server.config.persistence.visibility.sql.user=postgres \
