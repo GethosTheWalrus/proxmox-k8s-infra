@@ -107,6 +107,9 @@ deploy_temporal_install() {
     --set elasticsearch.enabled=false
 
   kubectl apply -f k8s/05-temporal-config.yaml
+  
+  # Fix CSRF cookie issue for HTTP access
+  kubectl set env deployment/temporal-web -n temporal TEMPORAL_CSRF_COOKIE_INSECURE=true
 }
 
 deploy_temporal_verify() {
