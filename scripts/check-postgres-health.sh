@@ -35,7 +35,7 @@ SELECT
     used,
     res_for_super,
     max_conn - used - res_for_super as available,
-    round((used::float / max_conn::float) * 100, 2) as pct_used
+    round(((used::numeric / max_conn::numeric) * 100), 2) as pct_used
 FROM 
     (SELECT count(*) used FROM pg_stat_activity) t1,
     (SELECT setting::int res_for_super FROM pg_settings WHERE name = 'superuser_reserved_connections') t2,
@@ -48,7 +48,7 @@ psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -c "
 SELECT 
     state,
     count(*) as connections,
-    round(avg(EXTRACT(EPOCH FROM (now() - state_change))), 2) as avg_duration_sec
+    round(avg(EXTRACT(EPOCH FROM (now() - state_change)))::numeric, 2) as avg_duration_sec
 FROM pg_stat_activity 
 WHERE state IS NOT NULL
 GROUP BY state 
@@ -63,7 +63,7 @@ SELECT
     usename,
     datname,
     state,
-    round(EXTRACT(EPOCH FROM (now() - query_start)), 2) as duration_sec,
+    round(EXTRACT(EPOCH FROM (now() - query_start))::numeric, 2) as duration_sec,
     left(query, 80) as query_preview
 FROM pg_stat_activity 
 WHERE state = 'active' 
@@ -114,7 +114,7 @@ SELECT
     pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as total_size,
     n_live_tup as live_rows,
     n_dead_tup as dead_rows,
-    round((n_dead_tup::float / NULLIF(n_live_tup + n_dead_tup, 0)::float) * 100, 2) as dead_pct
+    round((n_dead_tup::numeric / NULLIF(n_live_tup + n_dead_tup, 0)::numeric) * 100, 2) as dead_pct
 FROM pg_stat_user_tables
 WHERE n_dead_tup + n_live_tup > 0
 ORDER BY n_dead_tup DESC
@@ -126,7 +126,7 @@ echo "=== Recommendations ==="
 
 # Check connection usage
 CONN_PCT=$(psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -t -c "
-SELECT round((count(*)::float / (SELECT setting::int FROM pg_settings WHERE name = 'max_connections')::float) * 100, 0)
+SELECT round((count(*)::numeric / (SELECT setting::int FROM pg_settings WHERE name = 'max_connections')::numeric) * 100, 0)
 FROM pg_stat_activity;
 " | xargs)
 
