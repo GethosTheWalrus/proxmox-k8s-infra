@@ -51,9 +51,13 @@ deploy_temporal_install() {
   kubectl apply -f k8s/04-temporal-secret.yaml
   
   # Deploy PgBouncer connection pooler (must use session mode for prepared statements)
-  echo "Deploying PgBouncer..."
-  kubectl apply -f k8s/02-pgbouncer.yaml
+  echo "Deploying PgBouncer connection pooler..."
+  kubectl apply -f k8s/07-pgbouncer.yaml
+  
+  # Wait for PgBouncer to be ready
+  echo "Waiting for PgBouncer to be ready..."
   kubectl wait --for=condition=ready pod -l app=pgbouncer -n temporal --timeout=120s
+  echo "PgBouncer is ready"
   
   helm repo add temporal https://temporalio.github.io/helm-charts
   helm repo update

@@ -1,6 +1,5 @@
-# PgBouncer connection pooler for Temporal
-# IMPORTANT: pool_mode must be "session" for Temporal's prepared statements to work
 ---
+# PgBouncer ConfigMap - Connection pooler for PostgreSQL
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -16,32 +15,35 @@ data:
     listen_port = 5432
     auth_type = md5
     auth_file = /etc/pgbouncer/userlist.txt
-
+    
     # Connection pooling settings
-    # MUST use session mode - transaction mode breaks prepared statements
+    # IMPORTANT: Must use session mode - transaction mode breaks Temporal's prepared statements
     pool_mode = session
     max_client_conn = 1000
     default_pool_size = 25
     min_pool_size = 5
     reserve_pool_size = 10
-
+    
     # Server connection limits
     server_lifetime = 3600
     server_idle_timeout = 600
-
+    
     # Logging
     log_connections = 1
     log_disconnections = 1
-
+    
     # Allow client parameters that PgBouncer doesn't understand
     ignore_startup_parameters = extra_float_digits
-
+    
     # Timeouts
-    query_timeout = 0
+    query_timeout = 30
     query_wait_timeout = 120
+    
   userlist.txt: |
     "postgres" "postgres"
+
 ---
+# PgBouncer Deployment
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -63,19 +65,15 @@ spec:
       - name: pgbouncer
         image: edoburu/pgbouncer:latest
         ports:
-        - name: pgbouncer
-          containerPort: 5432
+        - containerPort: 5432
+          name: pgbouncer
         resources:
           requests:
-            cpu: 100m
-            memory: 64Mi
+            memory: "64Mi"
+            cpu: "100m"
           limits:
-            cpu: 500m
-            memory: 256Mi
-        volumeMounts:
-        - name: config
-          mountPath: /etc/pgbouncer
-          readOnly: true
+            memory: "256Mi"
+            cpu: "500m"
         livenessProbe:
           tcpSocket:
             port: 5432
@@ -86,11 +84,17 @@ spec:
             port: 5432
           initialDelaySeconds: 5
           periodSeconds: 5
+        volumeMounts:
+        - name: config
+          mountPath: /etc/pgbouncer
+          readOnly: true
       volumes:
       - name: config
         configMap:
           name: pgbouncer-config
+
 ---
+# PgBouncer Service
 apiVersion: v1
 kind: Service
 metadata:
@@ -100,9 +104,10 @@ metadata:
     app: pgbouncer
 spec:
   type: ClusterIP
+  ports:
+  - port: 5432
+    targetPort: 5432
+    protocol: TCP
+    name: pgbouncer
   selector:
     app: pgbouncer
-  ports:
-  - name: pgbouncer
-    port: 5432
-    targetPort: 5432
