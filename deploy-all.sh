@@ -50,6 +50,11 @@ deploy_temporal_install() {
   kubectl create namespace temporal --dry-run=client -o yaml | kubectl apply -f -
   kubectl apply -f k8s/04-temporal-secret.yaml
   
+  # Deploy PgBouncer connection pooler (must use session mode for prepared statements)
+  echo "Deploying PgBouncer..."
+  kubectl apply -f k8s/02-pgbouncer.yaml
+  kubectl wait --for=condition=ready pod -l app=pgbouncer -n temporal --timeout=120s
+  
   helm repo add temporal https://temporalio.github.io/helm-charts
   helm repo update
   helm upgrade --install temporal temporal/temporal \
@@ -63,7 +68,7 @@ deploy_temporal_install() {
     --set grafana.enabled=false \
     --set server.config.persistence.default.driver=sql \
     --set server.config.persistence.default.sql.driver=postgres12 \
-    --set server.config.persistence.default.sql.host=192.168.69.11 \
+    --set server.config.persistence.default.sql.host=pgbouncer.temporal.svc.cluster.local \
     --set server.config.persistence.default.sql.port=5432 \
     --set server.config.persistence.default.sql.database=temporal \
     --set server.config.persistence.default.sql.user=postgres \
@@ -71,7 +76,7 @@ deploy_temporal_install() {
     --set server.config.persistence.default.sql.maxConns=10 \
     --set server.config.persistence.visibility.driver=sql \
     --set server.config.persistence.visibility.sql.driver=postgres12 \
-    --set server.config.persistence.visibility.sql.host=192.168.69.11 \
+    --set server.config.persistence.visibility.sql.host=pgbouncer.temporal.svc.cluster.local \
     --set server.config.persistence.visibility.sql.port=5432 \
     --set server.config.persistence.visibility.sql.database=temporal_visibility \
     --set server.config.persistence.visibility.sql.user=postgres \
@@ -116,6 +121,12 @@ deploy_temporal_verify() {
     -l app.kubernetes.io/name=temporal,app.kubernetes.io/component=matching \
     -n temporal --timeout=600s
   echo "All Temporal core services are ready"
+  
+  # Set workflow retention to 30 days for default namespace
+  echo "Setting workflow retention to 30 days..."
+  kubectl exec -n temporal deployment/temporal-admintools -- \
+    tctl namespace update --retention 30d default 2>/dev/null || \
+    echo "Note: retention update may need to be run manually if namespace doesn't exist yet"
 }
 
 deploy_dashboard_install() {
