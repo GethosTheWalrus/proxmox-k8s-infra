@@ -123,6 +123,14 @@ deploy_temporal_install() {
   else
     echo "Codec encryption key already exists, skipping generation."
   fi
+  if ! kubectl get secret registry-credentials -n temporal &>/dev/null; then
+    echo "Creating registry pull secret..."
+    kubectl create secret docker-registry registry-credentials \
+      --namespace temporal \
+      --docker-server=git.home:5050 \
+      --docker-username="$REGISTRY_USER" \
+      --docker-password="$REGISTRY_PASSWORD"
+  fi
   kubectl apply -f k8s/08-codec-server.yaml
   
   # Configure Web UI to use the codec server

@@ -18,6 +18,8 @@ spec:
       labels:
         app: codec-server
     spec:
+      imagePullSecrets:
+      - name: registry-credentials
       containers:
       - name: codec-server
         image: git.home:5050/mike/proxmox-k8s-infra/codec-server:latest

@@ -38,6 +38,19 @@ sudo containerd config default | sudo tee /etc/containerd/config.toml
 # Enable SystemdCgroup for containerd (required for kubeadm)
 sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
 
+# Configure containerd to allow HTTP registry at git.home:5050
+sudo mkdir -p /etc/containerd/certs.d/git.home:5050
+cat <<EOF | sudo tee /etc/containerd/certs.d/git.home:5050/hosts.toml
+server = "http://git.home:5050"
+
+[host."http://git.home:5050"]
+  capabilities = ["pull", "resolve"]
+  skip_verify = true
+EOF
+
+# Point containerd to use the certs.d directory for registry config
+sudo sed -i 's|config_path = ""|config_path = "/etc/containerd/certs.d"|' /etc/containerd/config.toml
+
 sudo systemctl restart containerd
 sudo systemctl enable containerd
 

@@ -315,6 +315,8 @@ deploy-temporal:
     - echo "Testing kubectl connectivity..."
     - kubectl get nodes
     - chmod +x deploy-all.sh
+    - export REGISTRY_USER=$(echo "$GITLABUSERNAME" | base64 -d)
+    - export REGISTRY_PASSWORD="$GITLABPASSWORD"
     - ./deploy-all.sh temporal-install
   rules:
     - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
