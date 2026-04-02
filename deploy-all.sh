@@ -115,7 +115,7 @@ deploy_temporal_install() {
   echo "Deploying codec server..."
   if ! kubectl get secret codec-encryption-key -n temporal &>/dev/null; then
     echo "Generating encryption key for codec server..."
-    CODEC_KEY=$(openssl rand -base64 32)
+    CODEC_KEY=$(head -c 32 /dev/urandom | base64)
     kubectl create secret generic codec-encryption-key \
       --namespace temporal \
       --from-literal=key="$CODEC_KEY"
