@@ -91,13 +91,14 @@ fi
 # Disable swap (including zram)
 echo "Disabling swap..."
 swapoff -a 2>/dev/null || true
-# Disable zram swap used by Raspberry Pi OS
-if systemctl list-units --type=service | grep -q zram; then
-  echo "Disabling zram swap..."
-  systemctl disable --now zram-setup@zram0.service 2>/dev/null || true
-  swapoff /dev/zram0 2>/dev/null || true
-  modprobe -r zram 2>/dev/null || true
+# Remove systemd-zram-generator which auto-creates zram swap at boot
+if dpkg -l | grep -q systemd-zram-generator; then
+  echo "Removing systemd-zram-generator package..."
+  apt-get remove -y systemd-zram-generator 2>/dev/null || true
 fi
+swapoff /dev/zram0 2>/dev/null || true
+zramctl --reset /dev/zram0 2>/dev/null || true
+modprobe -r zram 2>/dev/null || true
 # Also disable dphys-swapfile if present
 if systemctl list-units --type=service --all | grep -q dphys-swapfile; then
   systemctl disable --now dphys-swapfile 2>/dev/null || true
