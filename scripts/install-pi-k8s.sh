@@ -183,6 +183,34 @@ if command -v ufw &>/dev/null; then
   ufw allow 7472
 fi
 
+# Fix resolv.conf for kubelet — Raspberry Pi OS may not have the systemd-resolved
+# symlink that kubelet expects at /run/systemd/resolve/resolv.conf
+if [ ! -e /run/systemd/resolve/resolv.conf ]; then
+  echo "Creating resolv.conf symlink for kubelet..."
+  mkdir -p /run/systemd/resolve
+  ln -sf /etc/resolv.conf /run/systemd/resolve/resolv.conf
+  # Persist across reboots via tmpfiles.d
+  cat <<EOF | tee /etc/tmpfiles.d/resolv-compat.conf
+L /run/systemd/resolve/resolv.conf - - - - /etc/resolv.conf
+EOF
+  systemd-tmpfiles --create 2>/dev/null || true
+fi
+
+# Fix CNI binary path — kubelet/flannel expects binaries in /opt/cni/bin
+# but Debian Trixie installs them to /usr/lib/cni
+if [ -d /usr/lib/cni ] && [ ! -d /opt/cni/bin ] || [ -z "$(ls -A /opt/cni/bin 2>/dev/null)" ]; then
+  echo "Creating CNI symlinks from /usr/lib/cni to /opt/cni/bin..."
+  mkdir -p /opt/cni/bin
+  for bin in /usr/lib/cni/*; do
+    [ -f "$bin" ] && ln -sf "$bin" /opt/cni/bin/
+  done
+elif [ -d /opt/cni/bin ] && [ -d /usr/lib/cni ]; then
+  # Ensure reverse symlinks exist too for any tools checking /usr/lib/cni
+  for bin in /opt/cni/bin/*; do
+    [ -f "$bin" ] && [ ! -e "/usr/lib/cni/$(basename "$bin")" ] && ln -sf "$bin" /usr/lib/cni/
+  done
+fi
+
 # Join the cluster
 echo "Joining the Kubernetes cluster at ${MASTER_IP}:6443..."
 kubeadm join ${MASTER_IP}:6443 --token ${TOKEN} --discovery-token-ca-cert-hash sha256:${HASH}
