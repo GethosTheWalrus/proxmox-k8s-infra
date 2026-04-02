@@ -154,28 +154,25 @@ deploy_temporal_verify() {
 }
 
 deploy_dashboard_install() {
-  echo "Deploying Kubernetes Dashboard..."
-  helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/
+  echo "Deploying Headlamp..."
+  helm repo add headlamp https://kubernetes-sigs.github.io/headlamp/
   helm repo update
-  helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard \
+  helm upgrade --install headlamp headlamp/headlamp \
     --create-namespace \
-    --namespace kubernetes-dashboard \
-    --set kong.proxy.http.enabled=true \
-    --set kong.proxy.type=LoadBalancer \
-    --set resources.limits.memory=256Mi \
-    --set metricsScraper.resources.limits.memory=256Mi
+    --namespace headlamp \
+    --set service.type=LoadBalancer
   
   # Create admin user for dashboard access
   kubectl apply -f k8s/06-dashboard-admin.yaml
 }
 
 deploy_dashboard_verify() {
-  echo "Verifying Kubernetes Dashboard..."
-  kubectl wait --namespace kubernetes-dashboard --for=condition=ready pod --selector=app.kubernetes.io/name=kubernetes-dashboard-web --timeout=300s
-  echo "Kubernetes Dashboard is ready"
+  echo "Verifying Headlamp..."
+  kubectl wait --namespace headlamp --for=condition=ready pod --selector=app.kubernetes.io/name=headlamp --timeout=300s
+  echo "Headlamp is ready"
   echo ""
   echo "To get admin token, run:"
-  echo "kubectl -n kubernetes-dashboard create token admin-user"
+  echo "kubectl -n headlamp create token admin-user"
 }
 
 if [ "$COMPONENT" == "metallb-install" ]; then
