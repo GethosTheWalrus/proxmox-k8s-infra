@@ -135,7 +135,7 @@ deploy_temporal_install() {
   
   # Configure Web UI to use the codec server
   kubectl set env deployment/temporal-web -n temporal \
-    TEMPORAL_CODEC_ENDPOINT=http://192.168.69.96:8888
+    TEMPORAL_CODEC_ENDPOINT=http://192.168.69.96:8888/codec
 }
 
 deploy_temporal_verify() {
