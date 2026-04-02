@@ -160,9 +160,15 @@ deploy_temporal_verify() {
   
   # Set workflow retention to 30 days for default namespace
   echo "Setting workflow retention to 30 days..."
-  kubectl exec -n temporal deployment/temporal-admintools -- \
-    tctl namespace update --retention 30d default 2>/dev/null || \
-    echo "Note: retention update may need to be run manually if namespace doesn't exist yet"
+  for i in 1 2 3 4 5; do
+    if kubectl exec -n temporal deployment/temporal-admintools -- \
+      tctl namespace update --retention 30d default 2>/dev/null; then
+      echo "Retention updated successfully."
+      break
+    fi
+    echo "Attempt $i failed, waiting 15s for frontend to be fully ready..."
+    sleep 15
+  done
 }
 
 deploy_dashboard_install() {
