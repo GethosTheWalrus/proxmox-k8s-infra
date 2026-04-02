@@ -110,6 +110,24 @@ deploy_temporal_install() {
   
   # Fix CSRF cookie issue for HTTP access
   kubectl set env deployment/temporal-web -n temporal TEMPORAL_CSRF_COOKIE_INSECURE=true
+  
+  # Deploy codec server for payload encryption
+  echo "Deploying codec server..."
+  if ! kubectl get secret codec-encryption-key -n temporal &>/dev/null; then
+    echo "Generating encryption key for codec server..."
+    CODEC_KEY=$(openssl rand -base64 32)
+    kubectl create secret generic codec-encryption-key \
+      --namespace temporal \
+      --from-literal=key="$CODEC_KEY"
+    echo "IMPORTANT: Back up this encryption key! Losing it means losing access to encrypted payloads."
+  else
+    echo "Codec encryption key already exists, skipping generation."
+  fi
+  kubectl apply -f k8s/08-codec-server.yaml
+  
+  # Configure Web UI to use the codec server
+  kubectl set env deployment/temporal-web -n temporal \
+    TEMPORAL_CODEC_ENDPOINT=http://192.168.69.96:8888
 }
 
 deploy_temporal_verify() {
@@ -124,6 +142,8 @@ deploy_temporal_verify() {
   kubectl wait --for=condition=ready pod \
     -l app.kubernetes.io/name=temporal,app.kubernetes.io/component=matching \
     -n temporal --timeout=600s
+  kubectl wait --for=condition=ready pod \
+    -l app=codec-server -n temporal --timeout=120s
   echo "All Temporal core services are ready"
   
   # Set workflow retention to 30 days for default namespace
