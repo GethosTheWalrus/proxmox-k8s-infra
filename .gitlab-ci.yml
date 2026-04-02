@@ -163,6 +163,89 @@ init-workers:
       - runner_system_failure
       - stuck_or_timeout_failure
 
+join-pi-nodes:
+  stage: configure
+  timeout: 20m
+  image:
+    name: ubuntu:latest
+  variables:
+    K8S1: 192.168.69.80
+    PI_USER: "$PI_USERNAME"
+    PI1: 192.168.69.31
+    PI2: 192.168.69.32
+    PI3: 192.168.69.34
+    PI1_NAME: p8s1
+    PI2_NAME: p8s2
+    PI3_NAME: p8s3
+  before_script:
+    - apt update && apt install -y openssh-client sshpass
+    - |
+      if [ ! -f key ]; then
+        echo "$SSHKEY" > key
+        chmod 600 key
+      fi
+    - chmod 600 key
+    - |
+      wait_for_ssh_key() {
+        local host=$1 user=$2 retries=30 delay=10
+        echo "Waiting for SSH (key) on $host..."
+        for i in $(seq 1 $retries); do
+          if ssh -i key -o StrictHostKeyChecking=no -o ConnectTimeout=5 "$user"@"$host" true 2>/dev/null; then
+            echo "SSH ready on $host"
+            return 0
+          fi
+          echo "Attempt $i/$retries failed, retrying in ${delay}s..."
+          sleep $delay
+        done
+        echo "SSH not available on $host after $((retries * delay))s"
+        return 1
+      }
+    - |
+      wait_for_ssh_pass() {
+        local host=$1 user=$2 retries=30 delay=10
+        echo "Waiting for SSH (password) on $host..."
+        for i in $(seq 1 $retries); do
+          if sshpass -p "$PI_PASSWORD" ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 "$user"@"$host" true 2>/dev/null; then
+            echo "SSH ready on $host"
+            return 0
+          fi
+          echo "Attempt $i/$retries failed, retrying in ${delay}s..."
+          sleep $delay
+        done
+        echo "SSH not available on $host after $((retries * delay))s"
+        return 1
+      }
+  script:
+    # Generate a fresh join token on the master
+    - wait_for_ssh_key "$K8S1" "k8s"
+    - |
+      JOIN_CMD=$(ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "sudo kubeadm token create --print-join-command")
+      echo "Join command: $JOIN_CMD"
+      TOKEN=$(echo "$JOIN_CMD" | sed -n 's/.*--token \([^ ]*\).*/\1/p')
+      HASH=$(echo "$JOIN_CMD" | sed -n 's/.*sha256:\([^ ]*\).*/\1/p')
+      echo "Token: $TOKEN"
+      echo "Hash: $HASH"
+    # Join each Pi node
+    - wait_for_ssh_pass "$PI1" "$PI_USER"
+    - sshpass -p "$PI_PASSWORD" ssh -o StrictHostKeyChecking=no "$PI_USER"@"$PI1" "sudo bash -s" < scripts/install-pi-k8s.sh $K8S1 $TOKEN $HASH
+    - wait_for_ssh_pass "$PI2" "$PI_USER"
+    - sshpass -p "$PI_PASSWORD" ssh -o StrictHostKeyChecking=no "$PI_USER"@"$PI2" "sudo bash -s" < scripts/install-pi-k8s.sh $K8S1 $TOKEN $HASH
+    - wait_for_ssh_pass "$PI3" "$PI_USER"
+    - sshpass -p "$PI_PASSWORD" ssh -o StrictHostKeyChecking=no "$PI_USER"@"$PI3" "sudo bash -s" < scripts/install-pi-k8s.sh $K8S1 $TOKEN $HASH
+    # Label Pi nodes for identification
+    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "kubectl label node $PI1_NAME node-role.kubernetes.io/pi-worker= --overwrite" || true
+    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "kubectl label node $PI2_NAME node-role.kubernetes.io/pi-worker= --overwrite" || true
+    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "kubectl label node $PI3_NAME node-role.kubernetes.io/pi-worker= --overwrite" || true
+    # Verify all nodes
+    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "kubectl get nodes"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+  needs:
+    - job: deploy-infra
+      optional: true
+  allow_failure: true
+
 deploy-metallb:
   stage: deploy
   timeout: 30m
@@ -425,6 +508,52 @@ verify-dashboard:
       - stuck_or_timeout_failure
       - api_failure
 
+cleanup-pi-nodes:
+  stage: destroy
+  timeout: 15m
+  image:
+    name: ubuntu:latest
+  variables:
+    K8S1: 192.168.69.80
+    PI_USER: "$PI_USERNAME"
+    PI1: 192.168.69.31
+    PI2: 192.168.69.32
+    PI3: 192.168.69.34
+    PI1_NAME: p8s1
+    PI2_NAME: p8s2
+    PI3_NAME: p8s3
+  before_script:
+    - apt update && apt install -y openssh-client sshpass
+    - |
+      if [ ! -f key ]; then
+        echo "$SSHKEY" > key
+        chmod 600 key
+      fi
+    - chmod 600 key
+  script:
+    # Drain and remove Pi nodes from the cluster
+    - |
+      for NODE in "$PI1_NAME" "$PI2_NAME" "$PI3_NAME"; do
+        echo "Draining node $NODE..."
+        ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" \
+          "kubectl drain $NODE --ignore-daemonsets --delete-emptydir-data --force --timeout=60s" || true
+        echo "Removing node $NODE from cluster..."
+        ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" \
+          "kubectl delete node $NODE --timeout=30s" || true
+      done
+    # Clean up Kubernetes on each Pi
+    - |
+      for PI in "$PI1" "$PI2" "$PI3"; do
+        echo "Cleaning up Kubernetes on $PI..."
+        sshpass -p "$PI_PASSWORD" ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$PI_USER"@"$PI" \
+          "sudo bash -s" < scripts/remove-pi-k8s.sh || echo "WARNING: Failed to clean up $PI (may be unreachable)"
+      done
+    - echo "Pi node cleanup complete"
+  rules:
+    - when: manual
+  needs: []
+  allow_failure: true
+
 destroy-cluster:
   stage: destroy
   image: 
@@ -443,4 +572,6 @@ destroy-cluster:
   allow_failure: true
   rules:
   - when: manual
-  needs: []
+  needs:
+    - job: cleanup-pi-nodes
+      optional: true
