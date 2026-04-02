@@ -16,17 +16,49 @@ fi
 
 export DEBIAN_FRONTEND=noninteractive
 
-# Enable cgroups for Raspberry Pi if needed (requires reboot before anything else)
-if [ -f /boot/firmware/cmdline.txt ] || [ -f /boot/cmdline.txt ]; then
-  CMDLINE_FILE="/boot/firmware/cmdline.txt"
-  [ ! -f "$CMDLINE_FILE" ] && CMDLINE_FILE="/boot/cmdline.txt"
-  if [ -f "$CMDLINE_FILE" ] && ! grep -q "cgroup_memory=1" "$CMDLINE_FILE"; then
-    echo "Enabling cgroup memory on Raspberry Pi..."
-    sed -i 's/$/ cgroup_memory=1 cgroup_enable=memory/' "$CMDLINE_FILE"
-    echo "Rebooting to apply cgroup settings..."
+# Check if memory cgroup is available at runtime
+CGROUP_MEMORY_OK=false
+if [ -f /sys/fs/cgroup/cgroup.controllers ]; then
+  echo "cgroup v2 detected. Controllers: $(cat /sys/fs/cgroup/cgroup.controllers)"
+  grep -q memory /sys/fs/cgroup/cgroup.controllers && CGROUP_MEMORY_OK=true
+elif [ -e /sys/fs/cgroup/memory ]; then
+  echo "cgroup v1 memory controller detected"
+  CGROUP_MEMORY_OK=true
+fi
+
+if [ "$CGROUP_MEMORY_OK" = "false" ]; then
+  echo "WARNING: Memory cgroup not available at runtime!"
+  echo "Kernel cmdline: $(cat /proc/cmdline)"
+
+  # Find and update boot cmdline
+  CMDLINE_FILE=""
+  for f in /boot/firmware/cmdline.txt /boot/cmdline.txt; do
+    if [ -f "$f" ]; then
+      CMDLINE_FILE="$f"
+      break
+    fi
+  done
+
+  if [ -n "$CMDLINE_FILE" ]; then
+    echo "Boot cmdline file ($CMDLINE_FILE): $(cat "$CMDLINE_FILE")"
+    if ! grep -q "cgroup_enable=memory" "$CMDLINE_FILE"; then
+      echo "Adding cgroup boot parameters..."
+      sed -i 's/$/ cgroup_memory=1 cgroup_enable=memory/' "$CMDLINE_FILE"
+      echo "Updated cmdline: $(cat "$CMDLINE_FILE")"
+    else
+      echo "Boot params already present but not active. Rebooting to apply..."
+    fi
+    echo "Rebooting to enable memory cgroup..."
     nohup bash -c "sleep 2 && reboot" &>/dev/null &
     exit 100
+  else
+    echo "ERROR: No cmdline.txt found. Cannot enable memory cgroup."
+    echo "Contents of /boot/: $(ls /boot/)"
+    echo "Contents of /boot/firmware/: $(ls /boot/firmware/ 2>/dev/null || echo 'not found')"
+    exit 1
   fi
+else
+  echo "Memory cgroup is available"
 fi
 
 # Reset if previously joined to a cluster
