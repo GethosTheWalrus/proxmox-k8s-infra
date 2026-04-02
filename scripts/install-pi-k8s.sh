@@ -16,6 +16,19 @@ fi
 
 export DEBIAN_FRONTEND=noninteractive
 
+# Enable cgroups for Raspberry Pi if needed (requires reboot before anything else)
+if [ -f /boot/firmware/cmdline.txt ] || [ -f /boot/cmdline.txt ]; then
+  CMDLINE_FILE="/boot/firmware/cmdline.txt"
+  [ ! -f "$CMDLINE_FILE" ] && CMDLINE_FILE="/boot/cmdline.txt"
+  if [ -f "$CMDLINE_FILE" ] && ! grep -q "cgroup_memory=1" "$CMDLINE_FILE"; then
+    echo "Enabling cgroup memory on Raspberry Pi..."
+    sed -i 's/$/ cgroup_memory=1 cgroup_enable=memory/' "$CMDLINE_FILE"
+    echo "Rebooting to apply cgroup settings..."
+    nohup bash -c "sleep 2 && reboot" &>/dev/null &
+    exit 100
+  fi
+fi
+
 # Reset if previously joined to a cluster
 if command -v kubeadm &>/dev/null; then
   echo "Resetting previous Kubernetes installation..."
@@ -65,17 +78,6 @@ systemctl restart containerd
 systemctl enable containerd
 
 sleep 5
-
-# Enable cgroups for Raspberry Pi if needed
-if [ -f /boot/firmware/cmdline.txt ] || [ -f /boot/cmdline.txt ]; then
-  CMDLINE_FILE="/boot/firmware/cmdline.txt"
-  [ ! -f "$CMDLINE_FILE" ] && CMDLINE_FILE="/boot/cmdline.txt"
-  if [ -f "$CMDLINE_FILE" ] && ! grep -q "cgroup_memory=1" "$CMDLINE_FILE"; then
-    echo "Enabling cgroup memory on Raspberry Pi..."
-    sed -i 's/$/ cgroup_memory=1 cgroup_enable=memory/' "$CMDLINE_FILE"
-    echo "NOTE: cgroup settings added. A reboot may be required if kubelet fails."
-  fi
-fi
 
 # Add Kubernetes apt repository
 echo "Adding Kubernetes APT repository..."
