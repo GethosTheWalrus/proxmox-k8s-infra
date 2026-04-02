@@ -39,6 +39,8 @@ build-codec-server:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - codec-server/**
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
+      when: always
 
 deploy-infra:
   stage: build

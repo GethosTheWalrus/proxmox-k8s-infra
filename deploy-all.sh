@@ -142,8 +142,12 @@ deploy_temporal_verify() {
   kubectl wait --for=condition=ready pod \
     -l app.kubernetes.io/name=temporal,app.kubernetes.io/component=matching \
     -n temporal --timeout=600s
-  kubectl wait --for=condition=ready pod \
-    -l app=codec-server -n temporal --timeout=120s
+  if kubectl get deployment codec-server -n temporal &>/dev/null; then
+    kubectl wait --for=condition=ready pod \
+      -l app=codec-server -n temporal --timeout=120s
+  else
+    echo "Codec server not deployed, skipping wait."
+  fi
   echo "All Temporal core services are ready"
   
   # Set workflow retention to 30 days for default namespace
