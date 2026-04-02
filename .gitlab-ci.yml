@@ -79,7 +79,23 @@ init-master:
     TOKEN: abcdef.0123456789abcdef
   before_script:
     - apt update && apt install -y openssh-client
+    - |
+      wait_for_ssh() {
+        local host=$1 retries=30 delay=10
+        echo "Waiting for SSH on $host..."
+        for i in $(seq 1 $retries); do
+          if ssh -i key -o StrictHostKeyChecking=no -o ConnectTimeout=5 k8s@"$host" true 2>/dev/null; then
+            echo "SSH ready on $host after $((i * delay - delay))s"
+            return 0
+          fi
+          echo "Attempt $i/$retries failed, retrying in ${delay}s..."
+          sleep $delay
+        done
+        echo "SSH not available on $host after $((retries * delay))s"
+        return 1
+      }
   script:
+  - wait_for_ssh "$K8S1"
   - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "sudo ROLE=$ROLE TOKEN=$TOKEN bash -s" < scripts/install-k8s.sh
   - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/hash $CI_PROJECT_DIR/hash
   rules:
@@ -108,10 +124,29 @@ init-workers:
     ROLE: worker
   before_script:
     - apt update && apt install -y openssh-client
+    - |
+      wait_for_ssh() {
+        local host=$1 retries=30 delay=10
+        echo "Waiting for SSH on $host..."
+        for i in $(seq 1 $retries); do
+          if ssh -i key -o StrictHostKeyChecking=no -o ConnectTimeout=5 k8s@"$host" true 2>/dev/null; then
+            echo "SSH ready on $host after $((i * delay - delay))s"
+            return 0
+          fi
+          echo "Attempt $i/$retries failed, retrying in ${delay}s..."
+          sleep $delay
+        done
+        echo "SSH not available on $host after $((retries * delay))s"
+        return 1
+      }
   script:
+    - wait_for_ssh "$K8S1"
     - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/hash $CI_PROJECT_DIR/hash
+    - wait_for_ssh "$K8S2"
     - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S2" "sudo ROLE=$ROLE bash -s" < $CI_PROJECT_DIR/scripts/install-k8s.sh $K8S1 $JOINTOKEN $(cat $CI_PROJECT_DIR/hash)
+    - wait_for_ssh "$K8S3"
     - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S3" "sudo ROLE=$ROLE bash -s" < $CI_PROJECT_DIR/scripts/install-k8s.sh $K8S1 $JOINTOKEN $(cat $CI_PROJECT_DIR/hash)
+    - wait_for_ssh "$K8S4"
     - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S4" "sudo ROLE=$ROLE bash -s" < $CI_PROJECT_DIR/scripts/install-k8s.sh $K8S1 $JOINTOKEN $(cat $CI_PROJECT_DIR/hash)
   rules:
     - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
