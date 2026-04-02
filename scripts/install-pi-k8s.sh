@@ -80,10 +80,30 @@ apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
 
 sleep 5
 
-# Disable swap
+# Ensure hostname resolves locally
+HOSTNAME=$(hostname)
+if ! getent hosts "$HOSTNAME" &>/dev/null; then
+  echo "Adding $HOSTNAME to /etc/hosts..."
+  LOCAL_IP=$(ip -4 route get 1 | awk '{print $7; exit}')
+  echo "$LOCAL_IP $HOSTNAME" >> /etc/hosts
+fi
+
+# Disable swap (including zram)
 echo "Disabling swap..."
-swapoff -a
+swapoff -a 2>/dev/null || true
+# Disable zram swap used by Raspberry Pi OS
+if systemctl list-units --type=service | grep -q zram; then
+  echo "Disabling zram swap..."
+  systemctl disable --now zram-setup@zram0.service 2>/dev/null || true
+  swapoff /dev/zram0 2>/dev/null || true
+  modprobe -r zram 2>/dev/null || true
+fi
+# Also disable dphys-swapfile if present
+if systemctl list-units --type=service --all | grep -q dphys-swapfile; then
+  systemctl disable --now dphys-swapfile 2>/dev/null || true
+fi
 sed -i '/ swap / s/^/#/' /etc/fstab
+echo "Swap status after disable: $(free -h | grep Swap)"
 
 # Install containerd
 echo "Installing containerd..."
@@ -138,6 +158,14 @@ EOF
 sysctl --system
 
 sleep 5
+
+# Ensure hostname resolves locally
+HOSTNAME=$(hostname)
+if ! getent hosts "$HOSTNAME" &>/dev/null; then
+  echo "Adding $HOSTNAME to /etc/hosts..."
+  LOCAL_IP=$(ip -4 route get 1 | awk '{print $7; exit}')
+  echo "$LOCAL_IP $HOSTNAME" >> /etc/hosts
+fi
 
 # Configure firewall if ufw is available
 if command -v ufw &>/dev/null; then
