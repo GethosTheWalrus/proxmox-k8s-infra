@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -29,6 +28,20 @@ const (
 	encodingAESGCM      = "binary/encrypted"
 	encodingOriginalKey = "encryption-original-encoding"
 )
+
+// b64 encodes a string to base64 for metadata values
+func b64(s string) string {
+	return base64.StdEncoding.EncodeToString([]byte(s))
+}
+
+// decodeMetadata decodes a base64-encoded metadata value, returning the raw string
+func decodeMetadata(s string) string {
+	b, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		return s
+	}
+	return string(b)
+}
 
 var encryptionKey []byte
 
@@ -138,7 +151,7 @@ func handleDecode(w http.ResponseWriter, r *http.Request) {
 	var output PayloadList
 	for _, p := range input.Payloads {
 		// Only decrypt payloads that were encrypted by us
-		if p.Metadata[metadataEncoding] == encodingAESGCM {
+		if decodeMetadata(p.Metadata[metadataEncoding]) == encodingAESGCM {
 			decrypted, err := decryptPayload(p)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("decryption failed: %v", err), http.StatusInternalServerError)
@@ -183,7 +196,7 @@ func encryptPayload(p Payload) (Payload, error) {
 
 	return Payload{
 		Metadata: map[string]string{
-			metadataEncoding:    encodingAESGCM,
+			metadataEncoding:    b64(encodingAESGCM),
 			encodingOriginalKey: originalEncoding,
 		},
 		Data: base64.StdEncoding.EncodeToString(ciphertext),
@@ -217,10 +230,9 @@ func decryptPayload(p Payload) (Payload, error) {
 		return Payload{}, fmt.Errorf("decrypt: %w", err)
 	}
 
-	// Restore original encoding
 	originalEncoding := p.Metadata[encodingOriginalKey]
 	if originalEncoding == "" {
-		originalEncoding = "json/plain"
+		originalEncoding = b64("json/plain")
 	}
 
 	return Payload{
@@ -231,11 +243,3 @@ func decryptPayload(p Payload) (Payload, error) {
 	}, nil
 }
 
-// readBody reads the request body, handling potential buffering.
-func readBody(r *http.Request) ([]byte, error) {
-	var buf bytes.Buffer
-	if _, err := io.Copy(&buf, io.LimitReader(r.Body, 16<<20)); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
-}
