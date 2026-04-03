@@ -106,6 +106,22 @@ fi
 sed -i '/ swap / s/^/#/' /etc/fstab
 echo "Swap status after disable: $(free -h | grep Swap)"
 
+# Prevent IPv6 Router Advertisements from adding DNS servers
+# ISP routers may advertise IPv6 DNS via RDNSS, pushing the nameserver count
+# above Linux's 3-entry limit, causing Kubernetes DNSConfigForming warnings
+echo "Disabling IPv6 RA DNS..."
+if command -v nmcli &>/dev/null; then
+  for conn in $(nmcli -t -f NAME con show --active); do
+    echo "Setting ipv6.ignore-auto-dns on connection: $conn"
+    nmcli con mod "$conn" ipv6.ignore-auto-dns yes 2>/dev/null || true
+  done
+  nmcli general reload 2>/dev/null || true
+  # Reapply active connections to pick up changes
+  for conn in $(nmcli -t -f NAME con show --active); do
+    nmcli con up "$conn" 2>/dev/null || true
+  done
+fi
+
 # Install containerd
 echo "Installing containerd..."
 apt-get install -y containerd

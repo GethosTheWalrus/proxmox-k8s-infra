@@ -29,6 +29,21 @@ echo "Disabling swap..."
 sudo swapoff -a
 sudo sed -i '/ swap / s/^/#/' /etc/fstab
 
+# Prevent IPv6 Router Advertisements from adding DNS servers
+# ISP routers may advertise IPv6 DNS via RDNSS, pushing the nameserver count
+# above Linux's 3-entry limit, causing Kubernetes DNSConfigForming warnings
+echo "Disabling IPv6 RA DNS to prevent excess nameservers..."
+if command -v netplan &>/dev/null; then
+  cat <<EOF | sudo tee /etc/netplan/99-no-ra-dns.yaml
+network:
+  version: 2
+  ethernets:
+    eth0:
+      accept-ra: false
+EOF
+  sudo netplan apply 2>/dev/null || true
+fi
+
 # Install containerd
 echo "Installing containerd..."
 sudo apt install -y containerd
