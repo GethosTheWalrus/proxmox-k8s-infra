@@ -28,13 +28,24 @@ build-codec-server:
   image:
     name: docker:latest
   services:
-    - docker:dind
+    - name: docker:dind
+      command: ["--insecure-registry=git.home:5050"]
   variables:
     DOCKER_TLS_CERTDIR: ""
   script:
-    - docker build -t ${REGISTRY_PATH}/codec-server:latest codec-server/
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-    - docker push ${REGISTRY_PATH}/codec-server:latest
+    - |
+      cat > /tmp/buildkitd.toml << 'EOF'
+      [registry."git.home:5050"]
+        http = true
+        insecure = true
+      EOF
+    - docker buildx create --use --name multiarch --driver docker-container --config /tmp/buildkitd.toml
+    - docker buildx build
+        --platform linux/amd64,linux/arm64
+        --push
+        -t ${REGISTRY_PATH}/codec-server:latest
+        codec-server/
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
