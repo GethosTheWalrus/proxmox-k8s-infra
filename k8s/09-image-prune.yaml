@@ -1,0 +1,41 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: image-prune
+  namespace: kube-system
+spec:
+  schedule: "0 3 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          hostPID: true
+          nodeSelector: {}
+          tolerations:
+          - operator: Exists
+          containers:
+          - name: prune
+            image: docker.io/library/alpine:3.21
+            command:
+            - nsenter
+            - -t
+            - "1"
+            - -m
+            - -u
+            - -i
+            - -n
+            - --
+            - sh
+            - -c
+            - crictl -r unix:///run/containerd/containerd.sock images | awk '/<none>/ {print $3}' | xargs -rn1 crictl -r unix:///run/containerd/containerd.sock rmi
+            securityContext:
+              privileged: true
+          restartPolicy: OnFailure
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                - matchExpressions:
+                  - key: kubernetes.io/os
+                    operator: In
+                    values: [linux]

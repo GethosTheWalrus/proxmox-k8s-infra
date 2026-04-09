@@ -193,6 +193,12 @@ deploy_dashboard_verify() {
   echo "kubectl -n headlamp create token admin-user"
 }
 
+deploy_image_prune_install() {
+  echo "Deploying image-prune CronJob..."
+  kubectl apply -f k8s/09-image-prune.yaml
+  echo "image-prune CronJob deployed (runs daily at 03:00)"
+}
+
 if [ "$COMPONENT" == "metallb-install" ]; then
   deploy_metallb_install
 elif [ "$COMPONENT" == "metallb-verify" ]; then
@@ -209,6 +215,8 @@ elif [ "$COMPONENT" == "dashboard-install" ]; then
   deploy_dashboard_install
 elif [ "$COMPONENT" == "dashboard-verify" ]; then
   deploy_dashboard_verify
+elif [ "$COMPONENT" == "image-prune-install" ]; then
+  deploy_image_prune_install
 else
   echo "No specific component selected, deploying all..."
   deploy_metallb_install
@@ -219,6 +227,7 @@ else
   deploy_temporal_verify
   deploy_dashboard_install
   deploy_dashboard_verify
+  deploy_image_prune_install
 fi
 
 echo "Deployment complete at $(date)!"
