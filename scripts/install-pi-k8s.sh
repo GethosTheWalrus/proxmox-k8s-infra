@@ -174,7 +174,7 @@ sleep 5
 
 # Install Kubernetes components
 echo "Installing Kubernetes components..."
-apt-get install -y kubelet kubeadm kubectl
+apt-get install -y kubelet kubeadm kubectl containernetworking-plugins
 apt-mark hold kubelet kubeadm kubectl
 systemctl enable --now kubelet
 
