@@ -161,6 +161,10 @@ init-workers:
     - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S3" "sudo ROLE=$ROLE bash -s" < $CI_PROJECT_DIR/scripts/install-k8s.sh $K8S1 $JOINTOKEN $(cat $CI_PROJECT_DIR/hash)
     - wait_for_ssh "$K8S4"
     - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S4" "sudo ROLE=$ROLE bash -s" < $CI_PROJECT_DIR/scripts/install-k8s.sh $K8S1 $JOINTOKEN $(cat $CI_PROJECT_DIR/hash)
+    # Label VM workers
+    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "kubectl label node k8s2 node-role.kubernetes.io/vm-worker= --overwrite" || true
+    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "kubectl label node k8s3 node-role.kubernetes.io/vm-worker= --overwrite" || true
+    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "kubectl label node k8s4 node-role.kubernetes.io/vm-worker= --overwrite" || true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
       when: always
@@ -185,9 +189,13 @@ join-pi-nodes:
     PI1: 192.168.69.31
     PI2: 192.168.69.32
     PI3: 192.168.69.34
+    PI4: 192.168.69.36
+    PI5: 192.168.69.37
     PI1_NAME: p8s1
     PI2_NAME: p8s2
     PI3_NAME: p8s3
+    PI4_NAME: p8s4
+    PI5_NAME: p8s5
   before_script:
     - apt update && apt install -y openssh-client sshpass
     - |
@@ -236,7 +244,31 @@ join-pi-nodes:
       HASH=$(echo "$JOIN_CMD" | sed -n 's/.*sha256:\([^ ]*\).*/\1/p')
       echo "Token: $TOKEN"
       echo "Hash: $HASH"
-    # Join each Pi node
+    # Upload certs for control-plane join
+    - |
+      CERT_KEY=$(ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "sudo kubeadm init phase upload-certs --upload-certs 2>/dev/null | tail -1")
+      echo "Certificate key generated for control-plane join"
+    # Join p8s3 as a control-plane node
+    - |
+      join_pi_cp() {
+        local pi_host=$1
+        wait_for_ssh_pass "$pi_host" "$PI_USER"
+        set +e
+        sshpass -p "$PI_PASSWORD" ssh -o StrictHostKeyChecking=no "$PI_USER"@"$pi_host" "sudo bash -s" < scripts/install-pi-k8s.sh $K8S1 $TOKEN $HASH control-plane $CERT_KEY
+        rc=$?
+        set -e
+        if [ $rc -eq 100 ]; then
+          echo "Pi $pi_host rebooting for cgroup changes, waiting..."
+          sleep 30
+          wait_for_ssh_pass "$pi_host" "$PI_USER"
+          sshpass -p "$PI_PASSWORD" ssh -o StrictHostKeyChecking=no "$PI_USER"@"$pi_host" "sudo bash -s" < scripts/install-pi-k8s.sh $K8S1 $TOKEN $HASH control-plane $CERT_KEY
+        elif [ $rc -ne 0 ]; then
+          echo "ERROR: install-pi-k8s.sh failed on $pi_host with exit code $rc"
+          exit $rc
+        fi
+      }
+    - join_pi_cp "$PI3"
+    # Join worker Pi nodes
     - |
       join_pi() {
         local pi_host=$1
@@ -257,11 +289,14 @@ join-pi-nodes:
       }
     - join_pi "$PI1"
     - join_pi "$PI2"
-    - join_pi "$PI3"
+    - join_pi "$PI4"
+    - join_pi "$PI5"
     # Label Pi nodes for identification
     - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "kubectl label node $PI1_NAME node-role.kubernetes.io/pi-worker= --overwrite" || true
     - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "kubectl label node $PI2_NAME node-role.kubernetes.io/pi-worker= --overwrite" || true
-    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "kubectl label node $PI3_NAME node-role.kubernetes.io/pi-worker= --overwrite" || true
+    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "kubectl label node $PI3_NAME node-role.kubernetes.io/control-plane= --overwrite" || true
+    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "kubectl label node $PI4_NAME node-role.kubernetes.io/pi-worker= --overwrite" || true
+    - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "kubectl label node $PI5_NAME node-role.kubernetes.io/pi-worker= --overwrite" || true
     # Verify all nodes
     - ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" "kubectl get nodes"
   rules:
@@ -580,9 +615,13 @@ cleanup-pi-nodes:
     PI1: 192.168.69.31
     PI2: 192.168.69.32
     PI3: 192.168.69.34
+    PI4: 192.168.69.36
+    PI5: 192.168.69.37
     PI1_NAME: p8s1
     PI2_NAME: p8s2
     PI3_NAME: p8s3
+    PI4_NAME: p8s4
+    PI5_NAME: p8s5
   before_script:
     - apt update && apt install -y openssh-client sshpass
     - |
@@ -594,7 +633,7 @@ cleanup-pi-nodes:
   script:
     # Drain and remove Pi nodes from the cluster
     - |
-      for NODE in "$PI1_NAME" "$PI2_NAME" "$PI3_NAME"; do
+      for NODE in "$PI1_NAME" "$PI2_NAME" "$PI3_NAME" "$PI4_NAME" "$PI5_NAME"; do
         echo "Draining node $NODE..."
         ssh -i key -o StrictHostKeyChecking=no k8s@"$K8S1" \
           "kubectl drain $NODE --ignore-daemonsets --delete-emptydir-data --force --timeout=60s" || true
@@ -604,7 +643,7 @@ cleanup-pi-nodes:
       done
     # Clean up Kubernetes on each Pi
     - |
-      for PI in "$PI1" "$PI2" "$PI3"; do
+      for PI in "$PI1" "$PI2" "$PI3" "$PI4" "$PI5"; do
         echo "Cleaning up Kubernetes on $PI..."
         sshpass -p "$PI_PASSWORD" ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$PI_USER"@"$PI" \
           "sudo bash -s" < scripts/remove-pi-k8s.sh || echo "WARNING: Failed to clean up $PI (may be unreachable)"

@@ -2,17 +2,26 @@
 set -e
 
 # This script runs on a Raspberry Pi node to install Kubernetes
-# and join an existing cluster as a worker.
-# Usage: sudo bash -s < install-pi-k8s.sh <master-ip> <join-token> <ca-cert-hash>
+# and join an existing cluster as a worker or control-plane node.
+# Usage: sudo bash -s < install-pi-k8s.sh <master-ip> <join-token> <ca-cert-hash> [control-plane <cert-key>]
 
 MASTER_IP=$1
 TOKEN=$2
 HASH=$3
+ROLE=${4:-worker}
+CERT_KEY=$5
 
 if [ -z "$MASTER_IP" ] || [ -z "$TOKEN" ] || [ -z "$HASH" ]; then
-  echo "ERROR: Usage: $0 <master-ip> <join-token> <ca-cert-hash>"
+  echo "ERROR: Usage: $0 <master-ip> <join-token> <ca-cert-hash> [control-plane <cert-key>]"
   exit 1
 fi
+
+if [ "$ROLE" = "control-plane" ] && [ -z "$CERT_KEY" ]; then
+  echo "ERROR: CERT_KEY is required when joining as control-plane"
+  exit 1
+fi
+
+echo "Joining cluster as: $ROLE"
 
 export DEBIAN_FRONTEND=noninteractive
 
@@ -197,6 +206,13 @@ if command -v ufw &>/dev/null; then
   ufw allow 8472
   ufw allow 7946
   ufw allow 7472
+  if [ "$ROLE" = "control-plane" ]; then
+    # Additional ports for control-plane nodes
+    ufw allow 2379  # etcd client
+    ufw allow 2380  # etcd peer
+    ufw allow 10259 # kube-scheduler
+    ufw allow 10257 # kube-controller-manager
+  fi
 fi
 
 # Fix resolv.conf for kubelet — Raspberry Pi OS may not have the systemd-resolved
@@ -228,7 +244,22 @@ elif [ -d /opt/cni/bin ] && [ -d /usr/lib/cni ]; then
 fi
 
 # Join the cluster
-echo "Joining the Kubernetes cluster at ${MASTER_IP}:6443..."
-kubeadm join ${MASTER_IP}:6443 --token ${TOKEN} --discovery-token-ca-cert-hash sha256:${HASH}
+if [ "$ROLE" = "control-plane" ]; then
+  echo "Joining the Kubernetes cluster as CONTROL PLANE at ${MASTER_IP}:6443..."
+  kubeadm join ${MASTER_IP}:6443 --token ${TOKEN} --discovery-token-ca-cert-hash sha256:${HASH} \
+    --control-plane --certificate-key ${CERT_KEY}
 
-echo "Successfully joined the cluster! Node: $(hostname)"
+  # Set up kubeconfig for the new control-plane node
+  echo "Setting up kubeconfig..."
+  USER_HOME=$(eval echo ~${SUDO_USER})
+  KUBE_USER=${SUDO_USER:-$(whoami)}
+  mkdir -p "$USER_HOME/.kube"
+  cp -f /etc/kubernetes/admin.conf "$USER_HOME/.kube/config"
+  chown "$KUBE_USER:$KUBE_USER" "$USER_HOME/.kube/config"
+  chmod 600 "$USER_HOME/.kube/config"
+else
+  echo "Joining the Kubernetes cluster as WORKER at ${MASTER_IP}:6443..."
+  kubeadm join ${MASTER_IP}:6443 --token ${TOKEN} --discovery-token-ca-cert-hash sha256:${HASH}
+fi
+
+echo "Successfully joined the cluster as $ROLE! Node: $(hostname)"
