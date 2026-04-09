@@ -146,6 +146,11 @@ containerd config default | tee /etc/containerd/config.toml > /dev/null
 # Enable SystemdCgroup
 sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
 
+# Force CNI bin_dir to /opt/cni/bin — Debian Trixie's containerd defaults to
+# /usr/lib/cni, but Flannel's DaemonSet init container writes to /opt/cni/bin.
+# Without this, containerd can't find the flannel plugin after node join.
+sed -i 's|bin_dir = ".*"|bin_dir = "/opt/cni/bin"|' /etc/containerd/config.toml
+
 # Configure containerd for HTTP registry at git.home:5050
 mkdir -p /etc/containerd/certs.d/git.home:5050
 cat <<EOF | tee /etc/containerd/certs.d/git.home:5050/hosts.toml
