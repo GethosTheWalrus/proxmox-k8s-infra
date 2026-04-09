@@ -70,7 +70,13 @@ else
   echo "Memory cgroup is available"
 fi
 
-# Reset if previously joined to a cluster
+# Skip if already joined to a cluster
+if systemctl is-active --quiet kubelet && [ -f /etc/kubernetes/kubelet.conf ]; then
+  echo "Node $(hostname) is already part of a cluster. Skipping join."
+  exit 0
+fi
+
+# Reset if previously partially installed (kubeadm present but kubelet not running)
 if command -v kubeadm &>/dev/null; then
   echo "Resetting previous Kubernetes installation..."
   kubeadm reset -f || true
