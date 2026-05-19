@@ -64,37 +64,31 @@ deploy_temporal_install() {
   helm upgrade --install temporal temporal/temporal \
     --namespace temporal \
     --create-namespace \
-    --version 0.72.0 \
+    --version 1.2.0 \
     --set server.replicaCount=3 \
-    --set cassandra.enabled=false \
-    --set postgresql.enabled=false \
-    --set prometheus.enabled=false \
-    --set grafana.enabled=false \
-    --set server.config.persistence.default.driver=sql \
-    --set server.config.persistence.default.sql.driver=postgres12 \
-    --set server.config.persistence.default.sql.host=pgbouncer.temporal.svc.cluster.local \
-    --set server.config.persistence.default.sql.port=5432 \
-    --set server.config.persistence.default.sql.database=temporal \
-    --set server.config.persistence.default.sql.user=postgres \
-    --set server.config.persistence.default.sql.existingSecret=temporal-postgresql \
-    --set server.config.persistence.default.sql.maxConns=10 \
-    --set server.config.persistence.visibility.driver=sql \
-    --set server.config.persistence.visibility.sql.driver=postgres12 \
-    --set server.config.persistence.visibility.sql.host=pgbouncer.temporal.svc.cluster.local \
-    --set server.config.persistence.visibility.sql.port=5432 \
-    --set server.config.persistence.visibility.sql.database=temporal_visibility \
-    --set server.config.persistence.visibility.sql.user=postgres \
-    --set server.config.persistence.visibility.sql.maxConns=10 \
-    --set server.config.persistence.visibility.sql.existingSecret=temporal-postgresql \
+    --set server.config.persistence.defaultStore=default \
+    --set server.config.persistence.visibilityStore=visibility \
+    --set server.config.persistence.datastores.default.sql.pluginName=postgres12 \
+    --set server.config.persistence.datastores.default.sql.driverName=postgres12 \
+    --set server.config.persistence.datastores.default.sql.connectAddr=pgbouncer.temporal.svc.cluster.local:5432 \
+    --set server.config.persistence.datastores.default.sql.connectProtocol=tcp \
+    --set server.config.persistence.datastores.default.sql.databaseName=temporal \
+    --set server.config.persistence.datastores.default.sql.user=postgres \
+    --set server.config.persistence.datastores.default.sql.existingSecret=temporal-postgresql \
+    --set server.config.persistence.datastores.default.sql.maxConns=10 \
+    --set server.config.persistence.datastores.visibility.sql.pluginName=postgres12 \
+    --set server.config.persistence.datastores.visibility.sql.driverName=postgres12 \
+    --set server.config.persistence.datastores.visibility.sql.connectAddr=pgbouncer.temporal.svc.cluster.local:5432 \
+    --set server.config.persistence.datastores.visibility.sql.connectProtocol=tcp \
+    --set server.config.persistence.datastores.visibility.sql.databaseName=temporal_visibility \
+    --set server.config.persistence.datastores.visibility.sql.user=postgres \
+    --set server.config.persistence.datastores.visibility.sql.maxConns=10 \
+    --set server.config.persistence.datastores.visibility.sql.existingSecret=temporal-postgresql \
     --set server.resources.requests.cpu=100m \
     --set server.resources.requests.memory=1Gi \
     --set server.resources.limits.memory=2Gi \
     --set admintools.resources.limits.memory=512Mi \
-    --set ui.enabled=false \
-    --set schema.setup.enabled=true \
-    --set schema.update.enabled=true \
-    --set schema.setup.timeout=600s \
-    --set schema.update.timeout=600s \
+    --set schema.useHelmHooks=true \
     --set web.enabled=true \
     --set web.replicaCount=2 \
     --set web.resources.requests.memory=256Mi \
@@ -104,6 +98,7 @@ deploy_temporal_install() {
     --set web.config.cors.cookieInsecure=true \
     --set web.config.cors.origins="*" \
     --set web.config.cors.allowCredentials=true \
+    --set-json 'server.dynamicConfig={"history.enableTransitionHistory":[{"value":true}],"history.enableChasm":[{"value":true}],"activity.enableStandalone":[{"value":true}]}' \
     --set elasticsearch.enabled=false
 
   kubectl apply -f k8s/05-temporal-config.yaml
