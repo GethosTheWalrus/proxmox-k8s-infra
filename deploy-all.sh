@@ -43,6 +43,29 @@ deploy_openebs_verify() {
   kubectl wait --for=condition=ready pod -l app=openebs -n openebs --timeout=300s
 }
 
+deploy_nfs_storage_install() {
+  echo "Deploying NFS storage provisioner with Helm..."
+  helm repo add nfs-subdir-external-provisioner https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/
+  helm repo update nfs-subdir-external-provisioner
+  helm upgrade --install nfs-storage nfs-subdir-external-provisioner/nfs-subdir-external-provisioner \
+    --namespace nfs-storage \
+    --create-namespace \
+    --set nfs.server=192.168.69.17 \
+    --set nfs.path=/volume1/K8s \
+    --set storageClass.name=nfs-client \
+    --set storageClass.defaultClass=false \
+    --set storageClass.archiveOnDelete=true
+}
+
+deploy_nfs_storage_verify() {
+  echo "Verifying NFS storage provisioner..."
+  kubectl wait --for=condition=ready pod \
+    -l app=nfs-subdir-external-provisioner \
+    -n nfs-storage --timeout=300s
+  kubectl get storageclass nfs-client
+  echo "NFS StorageClass nfs-client is ready"
+}
+
 deploy_temporal_install() {
   echo "Deploying Temporal with Helm..."
   
@@ -202,6 +225,10 @@ elif [ "$COMPONENT" == "openebs-install" ]; then
   deploy_openebs_install
 elif [ "$COMPONENT" == "openebs-verify" ]; then
   deploy_openebs_verify
+elif [ "$COMPONENT" == "nfs-storage-install" ]; then
+  deploy_nfs_storage_install
+elif [ "$COMPONENT" == "nfs-storage-verify" ]; then
+  deploy_nfs_storage_verify
 elif [ "$COMPONENT" == "temporal-install" ]; then
   deploy_temporal_install
 elif [ "$COMPONENT" == "temporal-verify" ]; then
@@ -218,6 +245,8 @@ else
   deploy_metallb_verify
   deploy_openebs_install
   deploy_openebs_verify
+  deploy_nfs_storage_install
+  deploy_nfs_storage_verify
   deploy_temporal_install
   deploy_temporal_verify
   deploy_dashboard_install

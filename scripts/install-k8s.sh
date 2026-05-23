@@ -20,7 +20,22 @@ sleep 5
 
 # Install necessary dependencies
 echo "Installing dependencies..."
-sudo apt install -y apt-transport-https ca-certificates curl gnupg lsb-release
+sudo apt install -y apt-transport-https ca-certificates curl gnupg lsb-release nfs-common
+
+NFS_SERVER=${NFS_SERVER:-192.168.69.17}
+NFS_PATH=${NFS_PATH:-/volume1/K8s}
+NFS_MOUNT=${NFS_MOUNT:-/mnt/k8s-nfs}
+FSTAB_ENTRY="${NFS_SERVER}:${NFS_PATH} ${NFS_MOUNT} nfs defaults,_netdev,nofail 0 0"
+
+echo "Configuring persistent NFS mount: ${NFS_SERVER}:${NFS_PATH} -> ${NFS_MOUNT}"
+sudo mkdir -p "$NFS_MOUNT"
+if grep -qsE "^[^#]+[[:space:]]+${NFS_MOUNT//\//\/}[[:space:]]+" /etc/fstab; then
+  sudo sed -i "s|^[^#]*[[:space:]]${NFS_MOUNT//\//\/}[[:space:]].*|${FSTAB_ENTRY}|" /etc/fstab
+elif ! grep -qsF "$FSTAB_ENTRY" /etc/fstab; then
+  echo "$FSTAB_ENTRY" | sudo tee -a /etc/fstab
+fi
+sudo systemctl daemon-reload 2>/dev/null || true
+sudo mount "$NFS_MOUNT" || sudo mount -a
 
 sleep 5
 

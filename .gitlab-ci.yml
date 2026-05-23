@@ -307,6 +307,49 @@ join-pi-nodes:
       optional: true
   allow_failure: true
 
+configure-nfs-mounts:
+  stage: configure
+  timeout: 20m
+  image:
+    name: ubuntu:latest
+  variables:
+    K8S1: 192.168.69.80
+    K8S2: 192.168.69.81
+    K8S3: 192.168.69.82
+    K8S4: 192.168.69.83
+    PI_USER: "$PI_USERNAME"
+    PI1: 192.168.69.31
+    PI2: 192.168.69.32
+    PI3: 192.168.69.34
+    PI4: 192.168.69.36
+    PI5: 192.168.69.37
+  before_script:
+    - apt update && apt install -y openssh-client sshpass
+    - |
+      if [ ! -f key ]; then
+        echo "$SSHKEY" > key
+        chmod 600 key
+      fi
+    - chmod 600 key
+  script:
+    - |
+      for NODE in "$K8S1" "$K8S2" "$K8S3" "$K8S4"; do
+        echo "Configuring NFS mount on VM node $NODE..."
+        ssh -i key -o StrictHostKeyChecking=no k8s@"$NODE" "sudo bash -s" < scripts/configure-nfs-mount.sh
+      done
+    - |
+      for NODE in "$PI1" "$PI2" "$PI3" "$PI4" "$PI5"; do
+        echo "Configuring NFS mount on Pi node $NODE..."
+        sshpass -p "$PI_PASSWORD" ssh -o StrictHostKeyChecking=no "$PI_USER"@"$NODE" "sudo bash -s" < scripts/configure-nfs-mount.sh
+      done
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+  needs:
+    - job: deploy-infra
+      optional: true
+  allow_failure: false
+
 deploy-metallb:
   stage: deploy
   timeout: 30m
@@ -425,6 +468,71 @@ verify-openebs:
     - kubectl get nodes
     - chmod +x deploy-all.sh
     - ./deploy-all.sh openebs-verify
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
+      when: always
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+      - api_failure
+
+deploy-nfs-storage:
+  stage: deploy
+  timeout: 30m
+  image:
+    name: alpine/k8s:1.29.13
+  variables:
+    K8S1: 192.168.69.80
+  before_script:
+    - apk --no-cache add openssh-client kubectl helm
+    - |
+      if [ ! -f key ]; then
+        echo "$SSHKEY" > key
+        chmod 600 key
+      fi
+  script:
+    - mkdir -p ~/.kube
+    - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
+    - export KUBECONFIG=~/.kube/config
+    - chmod 600 ~/.kube/config
+    - echo "Testing kubectl connectivity..."
+    - kubectl get nodes
+    - chmod +x deploy-all.sh
+    - ./deploy-all.sh nfs-storage-install
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
+      when: always
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+      - api_failure
+
+verify-nfs-storage:
+  stage: verify
+  timeout: 30m
+  image:
+    name: alpine/k8s:1.29.13
+  variables:
+    K8S1: 192.168.69.80
+  before_script:
+    - apk --no-cache add openssh-client kubectl helm
+  script:
+    - mkdir -p ~/.kube
+    - scp -i key -o StrictHostKeyChecking=no k8s@"$K8S1":~/.kube/config ~/.kube/config
+    - export KUBECONFIG=~/.kube/config
+    - chmod 600 ~/.kube/config
+    - echo "Testing kubectl connectivity..."
+    - kubectl get nodes
+    - chmod +x deploy-all.sh
+    - ./deploy-all.sh nfs-storage-verify
   rules:
     - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_TITLE =~ /-init$/'
       when: always
