@@ -232,7 +232,16 @@ func decryptPayload(p Payload) (Payload, error) {
 
 	originalEncoding := p.Metadata[encodingOriginalKey]
 	if originalEncoding == "" {
+		originalEncoding = p.Metadata["original_encoding"]
+	}
+	if originalEncoding == "" {
 		originalEncoding = b64("json/plain")
+	}
+
+	// Older ThreadBot clients encrypted payload.SerializeToString() instead of
+	// encrypting only payload.data. Decode those histories for Temporal Web.
+	if legacyPayload, ok := parseLegacyTemporalPayload(plaintext); ok {
+		return legacyPayload, nil
 	}
 
 	return Payload{
@@ -243,3 +252,100 @@ func decryptPayload(p Payload) (Payload, error) {
 	}, nil
 }
 
+func parseLegacyTemporalPayload(data []byte) (Payload, bool) {
+	metadata := map[string]string{}
+	var payloadData []byte
+	for i := 0; i < len(data); {
+		key, read, ok := readVarint(data[i:])
+		if !ok {
+			return Payload{}, false
+		}
+		i += read
+		field := key >> 3
+		wireType := key & 0x7
+		if wireType != 2 {
+			return Payload{}, false
+		}
+
+		length, read, ok := readVarint(data[i:])
+		if !ok {
+			return Payload{}, false
+		}
+		i += read
+		if length > uint64(len(data)-i) {
+			return Payload{}, false
+		}
+		value := data[i : i+int(length)]
+		i += int(length)
+
+		switch field {
+		case 1:
+			key, value, ok := parseLegacyPayloadMetadata(value)
+			if !ok {
+				return Payload{}, false
+			}
+			metadata[key] = base64.StdEncoding.EncodeToString(value)
+		case 2:
+			payloadData = value
+		}
+	}
+
+	if len(metadata) == 0 && payloadData == nil {
+		return Payload{}, false
+	}
+	return Payload{
+		Metadata: metadata,
+		Data:     base64.StdEncoding.EncodeToString(payloadData),
+	}, true
+}
+
+func parseLegacyPayloadMetadata(data []byte) (string, []byte, bool) {
+	var metadataKey string
+	var metadataValue []byte
+	for i := 0; i < len(data); {
+		key, read, ok := readVarint(data[i:])
+		if !ok {
+			return "", nil, false
+		}
+		i += read
+		field := key >> 3
+		wireType := key & 0x7
+		if wireType != 2 {
+			return "", nil, false
+		}
+
+		length, read, ok := readVarint(data[i:])
+		if !ok {
+			return "", nil, false
+		}
+		i += read
+		if length > uint64(len(data)-i) {
+			return "", nil, false
+		}
+		value := data[i : i+int(length)]
+		i += int(length)
+
+		switch field {
+		case 1:
+			metadataKey = string(value)
+		case 2:
+			metadataValue = value
+		}
+	}
+
+	return metadataKey, metadataValue, metadataKey != "" && metadataValue != nil
+}
+
+func readVarint(data []byte) (uint64, int, bool) {
+	var value uint64
+	for i, b := range data {
+		if i == 10 {
+			return 0, 0, false
+		}
+		value |= uint64(b&0x7f) << (7 * i)
+		if b < 0x80 {
+			return value, i + 1, true
+		}
+	}
+	return 0, 0, false
+}
