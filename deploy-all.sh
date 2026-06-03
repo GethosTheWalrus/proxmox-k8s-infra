@@ -217,6 +217,69 @@ deploy_image_prune_install() {
   echo "image-prune CronJob deployed (runs daily at 03:00)"
 }
 
+deploy_temporal_worker_controller_install() {
+  echo "Deploying Temporal Worker Controller (CRDs + controller)..."
+
+  local TWCC_CHART_VERSION="0.25.0"
+  local TWCC_NAMESPACE="temporal"
+
+  # Ensure namespace exists (created by the Temporal install, but harmless if standalone)
+  kubectl create namespace "$TWCC_NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+
+  # 1) CRDs chart (separate so it can be upgraded independently of the controller).
+  #    Must be applied before the Connection manifest below, which depends on the
+  #    temporal.io/v1alpha1 CRDs being registered with the API server.
+  helm upgrade --install temporal-worker-controller-crds \
+    oci://docker.io/temporalio/temporal-worker-controller-crds \
+    --version "$TWCC_CHART_VERSION" \
+    --namespace "$TWCC_NAMESPACE"
+
+  # 2) Connection resource that worker CRs in other repos will reference.
+  #    Apply after the CRDs chart so the API server knows the kind.
+  kubectl apply -f k8s/10-temporal-connection.yaml
+
+  # 3) cert-manager (installed as its own release first so the CRDs are present
+  #    before the controller chart renders its Certificate/Issuer resources).
+  #    The controller's WorkerResourceTemplate validating webhook is always on
+  #    and unconditionally mounts webhook-server-cert, so cert-manager is a
+  #    hard requirement (not just for the opt-in TWD webhook).
+  helm repo add jetstack https://charts.jetstack.io
+  helm repo update jetstack
+  helm upgrade --install cert-manager jetstack/cert-manager \
+    --namespace cert-manager \
+    --create-namespace \
+    --set crds.enabled=true \
+    --set global.leaderElection.namespace=cert-manager
+  kubectl wait --for=condition=ready pod \
+    -l app.kubernetes.io/name=cert-manager \
+    -n cert-manager --timeout=300s
+
+  # 4) Controller chart
+  #    - certmanager.install=false so the subchart isn't rendered (we installed
+  #      cert-manager separately above to avoid Helm subchart ordering issues).
+  #    - certmanager.enabled=true so the controller's Certificate/Issuer for
+  #      webhook-server-cert get created.
+  #    - webhook.enabled=false skips the opt-in TemporalWorkerDeployment webhook.
+  helm upgrade --install temporal-worker-controller \
+    oci://docker.io/temporalio/temporal-worker-controller \
+    --version "$TWCC_CHART_VERSION" \
+    --namespace "$TWCC_NAMESPACE" \
+    --set webhook.enabled=false \
+    --set certmanager.install=false \
+    --set certmanager.enabled=true
+}
+
+deploy_temporal_worker_controller_verify() {
+  echo "Verifying Temporal Worker Controller..."
+  kubectl wait --for=condition=ready pod \
+    -l app.kubernetes.io/name=temporal-worker-controller \
+    -n temporal --timeout=300s
+  echo "Temporal Worker Controller is ready"
+  echo ""
+  echo "Worker CRs (in any namespace Argo CD syncs) should reference Connection/temporal"
+  echo "in the 'temporal' namespace, and use the 'registry-credentials' imagePullSecret."
+}
+
 if [ "$COMPONENT" == "metallb-install" ]; then
   deploy_metallb_install
 elif [ "$COMPONENT" == "metallb-verify" ]; then
@@ -239,6 +302,10 @@ elif [ "$COMPONENT" == "dashboard-verify" ]; then
   deploy_dashboard_verify
 elif [ "$COMPONENT" == "image-prune-install" ]; then
   deploy_image_prune_install
+elif [ "$COMPONENT" == "worker-controller-install" ]; then
+  deploy_temporal_worker_controller_install
+elif [ "$COMPONENT" == "worker-controller-verify" ]; then
+  deploy_temporal_worker_controller_verify
 else
   echo "No specific component selected, deploying all..."
   deploy_metallb_install
@@ -249,6 +316,8 @@ else
   deploy_nfs_storage_verify
   deploy_temporal_install
   deploy_temporal_verify
+  deploy_temporal_worker_controller_install
+  deploy_temporal_worker_controller_verify
   deploy_dashboard_install
   deploy_dashboard_verify
   deploy_image_prune_install

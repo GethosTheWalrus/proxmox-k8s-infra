@@ -286,4 +286,93 @@ With PgBouncer, each Temporal service needs:
 - Worker: ~5-10 connections per replica
 
 Total needed: ~100-150 connections, pooled from 1000+ client connections.
+
+## Temporal Worker Deployments
+
+This repo installs the [Temporal Worker Controller](https://github.com/temporalio/temporal-worker-controller) (Helm chart `0.25.0`, app `v1.6.0`) into the `temporal` namespace, plus `cert-manager` into the `cert-manager` namespace. The controller manages versioned, traffic-routed worker Deployments through the `temporal.io/v1alpha1` `TemporalWorkerDeployment` and `TemporalConnection` CRDs.
+
+Worker resources themselves are **not** defined in this repo — they live in their own application repos and are synced by Argo CD. This repo only provides:
+
+- The controller + CRDs (via `deploy-all.sh`, component `worker-controller-install`).
+- A `TemporalConnection` resource named `temporal` in the `temporal` namespace (`k8s/10-temporal-connection.yaml`) pointing at the in-cluster frontend.
+- The `registry-credentials` image pull secret (created during the Temporal install) for pulling private worker images.
+
+### Contract for worker repos
+
+Each worker repo's Argo CD Application should deploy `TemporalWorkerDeployment` manifests that:
+
+- Reference the shared `Connection`: `connectionRef: { name: temporal, namespace: temporal }`.
+- Run in any namespace (the controller is namespace-scoped; install it per-namespace or grant cluster-wide RBAC if you need cross-namespace workers).
+- Use the existing pull secret in `imagePullSecrets: [{ name: registry-credentials }]`.
+- Set `spec.template.spec.containers[].image` to the worker image built and pushed to `git.home:5050`.
+- Pick a rollout strategy (`Manual`, `AllAtOnce`, or `Progressive`) under `spec.rollout.strategy`.
+
+Example worker manifest (lives in the worker repo, not here):
+
+```yaml
+apiVersion: temporal.io/v1alpha1
+kind: TemporalWorkerDeployment
+metadata:
+  name: my-worker
+  namespace: my-worker
+spec:
+  replicas: 3
+  connectionRef:
+    name: temporal
+    namespace: temporal
+  rollout:
+    strategy: Progressive
+    steps:
+      - rampPercentage: 10
+        pauseDuration: 5m
+      - rampPercentage: 100
+        pauseDuration: 0s
+  template:
+    spec:
+      imagePullSecrets:
+        - name: registry-credentials
+      containers:
+        - name: worker
+          image: git.home:5050/my-org/my-worker:v1
+          env:
+            - name: TEMPORAL_ADDRESS
+              value: temporal-frontend.temporal.svc.cluster.local:7233
+            - name: TEMPORAL_TASK_QUEUE
+              value: my-task-queue
+```
+
+### Argo CD health check
+
+Argo CD does not know about `temporal.io/v1alpha1/TemporalWorkerDeployment` by default, so without a custom health check it will report `Healthy` the moment the CR is applied — before the rollout finishes. Add this to the Argo CD ConfigMap (`argocd-cm`) once per cluster:
+
+```yaml
+data:
+  resource.customizations.health.temporal.io_TemporalWorkerDeployment: |
+    local ready = nil
+    local progressing = nil
+    if obj.status ~= nil and obj.status.conditions ~= nil then
+      for _, c in ipairs(obj.status.conditions) do
+        if c.type == "Ready" then ready = c end
+        if c.type == "Progressing" then progressing = c end
+      end
+    end
+    if ready ~= nil and ready.status == "True" then
+      return {status = "Healthy", message = ready.message}
+    end
+    if progressing ~= nil then
+      if progressing.status == "True" then
+        return {status = "Progressing", message = progressing.message}
+      else
+        return {status = "Degraded", message = progressing.message}
+      end
+    end
+    return {status = "Progressing", message = "Waiting for conditions"}
+```
+
+### Notes
+
+- `cert-manager` is installed as part of `worker-controller-install` because the `WorkerResourceTemplate` validating webhook is always on and unconditionally mounts a cert-manager-issued Secret. Disabling it is not supported by the chart.
+- The opt-in `TemporalWorkerDeployment` validating webhook is disabled (`webhook.enabled=false`) to avoid a second cert-manager `Certificate` and `Issuer`. Enable it in the controller install if you want the API server to reject malformed `TemporalWorkerDeployment` specs at apply time.
+- `certmanager.install=false` on the controller install prevents the subchart from being rendered (Helm subchart ordering caused the controller's `Certificate`/`Issuer` resources to fail validation against not-yet-installed cert-manager CRDs). Cert-manager is installed as a separate `helm upgrade --install` first.
+- The controller's `WorkerResourceTemplate` webhook only validates resources whose kinds are listed in `workerResourceTemplate.allowedResources`. The default config allows `HorizontalPodAutoscaler`; expand the list via `--set workerResourceTemplate.allowedResources[0].kinds={...}` if a worker repo needs to attach other kinds (e.g. `PodDisruptionBudget`).
 ```
