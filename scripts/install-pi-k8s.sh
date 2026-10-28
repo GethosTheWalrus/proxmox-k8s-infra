@@ -226,6 +226,7 @@ if command -v ufw &>/dev/null; then
   ufw allow 179
   ufw allow 80
   ufw allow 443
+  ufw allow 8123 # Home Assistant (host network)
   ufw allow 6443
   ufw allow 10250
   ufw allow 30000:32767/tcp

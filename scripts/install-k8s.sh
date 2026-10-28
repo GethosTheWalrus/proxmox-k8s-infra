@@ -121,6 +121,8 @@ sudo ufw allow 179
 # http
 sudo ufw allow 80
 sudo ufw allow 443
+# home assistant (host network)
+sudo ufw allow 8123
 # k8s
 sudo ufw allow 6443
 sudo ufw allow 2379
